@@ -1,5 +1,5 @@
-  //   O L D - B I R D - S O F T    \\
- //                                  \\
+//   O L D - B I R D - S O F T    \\
+//                                  \\
 // - - - - - - - - - [ pure web ] - - \\
 
 /** @type {HTMLElement} */
@@ -11,13 +11,12 @@ export const monitor = state => {
   try {
     monitorView.innerText = JSON.stringify(state, null, 2);
   } catch (error) {
-    console.error(console.error());
+    console.error(error);
     monitorView.innerText = error;
   }
 };
 
 /** @type {(ms:number) => Promise<void>} */
-// export const delay = (ms) => new Promise((release) => setTimeout(release, ms));
 export const delay = (ms) => {
   return new Promise((release) => {
     const start = performance.now();
@@ -35,28 +34,19 @@ export const delay = (ms) => {
 
 
 /**
- * I just think it is so easy,
- * but under the hood this is a bit complicated stuff,
- * need to be figurated how complex really is.
- * problem are started with a multi level reactive state 
- * with a different level watcher :: globalWatcher, prop:watcher
+ * Unified reactive signal — zignal.
  *
- * KIHAL : the problem of array are solved.
+ * Supports:
+ *  - STATIC  Symbol: mark a value so it is stored as-is (no recursive proxy)
+ *  - DIRECT  Symbol: mark a target with a callback invoked on every child-set
+ *  - Nested proxy wrapping for plain objects / arrays
+ *
+ * Watcher signature: (root, target, prop, value) => void
+ *   root   – the top-level proxy returned by zignal
+ *   target – the specific proxy node where the set happened
+ *   prop   – property key being set
+ *   value  – the new value
  */
-/** @type {<T>(watcher?: function) => (state?: T | object) => T} */
-export const signal = (watcher = () => { }) => (state = {}) => {
-  return new Proxy(state, {
-    get: (target, prop) => target[prop],
-    set: (target, prop, value) => {
-      target[prop] = (value !== null && typeof value === 'object')
-        ? signal(watcher)(value)
-        : value
-        ;
-      watcher(target, prop, value);
-      return true;
-    },
-  });
-};
 
 export const STATIC = Symbol('static');
 export const DIRECT = Symbol('direct');
@@ -67,36 +57,32 @@ export const DIRECT = Symbol('direct');
 export const zignal = (watcher = () => { }) => (state) => {
   let root;
   /** @type {<U>(state?: U) => U} */
-  const innerSignal = (state) => { 
+  const innerSignal = (state) => {
     const proxy = new Proxy(
-      Array.isArray(state) ? [] : {}, 
+      Array.isArray(state) ? [] : {},
       {
         get: (target, prop) => target[prop],
         set: (target, prop, value) => {
           if (target?.[DIRECT]) {
             target[DIRECT](prop, target[prop], value);
           }
-          target[prop] = (value !== null && typeof value === 'object' && !value[STATIC] && !value[DIRECT]) 
+          target[prop] = (value !== null && typeof value === 'object' && !value[STATIC] && !value[DIRECT])
             ? innerSignal(value)
             : value
             ;
           watcher(root, target, prop, value);
           return true;
-      }
-    });
+        }
+      });
     Object.entries(state).map(([key, val]) => proxy[key] = val);
     // @ts-ignore
     return proxy;
-  } 
-  const end = innerSignal(state); 
+  }
+  const end = innerSignal(state);
   root = end;
   watcher(end);
   return root;
 };
-
-globalThis.zignal = zignal; // TODO remove
-globalThis.DIRECT = DIRECT; // TODO remove
-globalThis.STATIC = STATIC; // TODO remove
 
 /** @type {(templateId:string, parent:string, id?:string, query?:string) => HTMLElement | null} */
 export const fragment = (templateId, parent, id, query = 'section') => {
