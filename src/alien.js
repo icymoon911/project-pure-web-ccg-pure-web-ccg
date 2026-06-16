@@ -22,9 +22,11 @@
 * }} Card
 */
 
-/** @typedef {{id:SlotId, card:CardString}} Slot */
+/** @typedef { Card | null } SlotCard */
 
-/** @typedef {[function | string, Slot, Slot]} Move */
+/** @typedef {{id:SlotId, card:SlotCard}} Slot */
+
+/** @typedef {[string, Slot, Slot]} Move */
 
 /**
 * Keys of Slots or Spots I was mixing this a bit.
@@ -63,9 +65,9 @@
 
 /**
 * @typedef {{
-* deck: CardString[],
-* lost: CardString[],
-* fly: { id: string, moves: Move[] },
+* deck: Card[],
+* lost: Card[],
+* fly: { id: string, moves: Move[] } | null,
 * table: Table,
 * phases: Phases,
 * score: number,
