@@ -35,6 +35,47 @@
     .duck-girl {
        transform: rotateX(-90deg) translateY(-10rem);
     }
+    /* Selected card slot glow */
+    .slot-selected {
+      outline: 4px solid #60a5fa !important;
+      outline-offset: 8px !important;
+      box-shadow: 0 0 30px rgba(96, 165, 250, 0.5);
+      animation: slot-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes slot-pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.4); }
+      50% { box-shadow: 0 0 40px rgba(96, 165, 250, 0.8); }
+    }
+    /* Game info panel */
+    #game-info {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      z-index: 20000;
+      background: rgba(0,0,0,0.85);
+      color: #d4d4d8;
+      padding: 1rem 1.4rem;
+      border-radius: 0.8rem;
+      min-width: 13rem;
+      font-size: 1.1rem;
+      user-select: none;
+      border: 1px solid #3f3f46;
+      backdrop-filter: blur(8px);
+    }
+    #game-info .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.3rem 0;
+    }
+    #game-info .info-label {
+      color: #71717a;
+      font-size: 0.95rem;
+    }
+    #game-info .info-value {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
   </style>
 </head>
 
@@ -191,6 +232,27 @@
     <section id="incoming" class="grid gap-4 grid-cols-4 p-4"></section>
     <section id="player" class="grid gap-4 grid-cols-4 p-4"></section>
   </main>
+
+  <!-- Game Info Panel -->
+  <section id="game-info">
+    <div class="info-row">
+      <span class="info-label">Score</span>
+      <span id="info-score" class="info-value" style="color:#fbbf24;">0</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Phase</span>
+      <span id="info-phase" class="info-value" style="color:#94a3b8;">BEGIN</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Deck</span>
+      <span id="info-deck" class="info-value" style="color:#60a5fa;">0</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Hero HP</span>
+      <span id="info-hero-power" class="info-value" style="color:#4ade80;">-</span>
+    </div>
+  </section>
+
   <teaser-animation></teaser-animation>
   <section class="grid grid-cols-2 min-w-[40rem] gap-4 fixed top-4 left-[4rem]">
     <input type="range" class="accent-emerald-600 appearance-none bg-zinc-700/50" min="-180" max="180" id="rotateX" value="0" /><label></label>

@@ -42,20 +42,45 @@ const slot = (parent, id, name, topRem, leftRem) => {
     card.style.left = `${leftRem}rem`;
   }
   slot.onclick = async () => {
+    // Block interaction during game over or busy state
+    if (alien.phases === 'BURN_OUT' || alien.phases === 'SURVIVE') return;
+    if (globalThis._busy) return;
+
     if (alien.fly?.id) {
       const found = alien.fly.moves
         .find(([, from, to]) => from.id == alien.fly.id && to.id == id)
-      // console.log(found);
-      if (found) {
-        const {card} = alien.table[alien.fly.id];
-        alien.table[alien.fly.id].card = null;
-        alien.table[id] = {id, card};
-      }
+
+      // Clear selection visual on previous slot
+      try {
+        const prevSlot = tableOfSlots[alien.fly.id];
+        if (prevSlot) prevSlot.slot.classList.remove('slot-selected');
+      } catch {}
+
+      // Clear possible-move highlights
+      Object.values(tableOfSlots).forEach(({slot: s}) => s.removeAttribute('data-possible'));
+
       alien.fly = null;
       alien._over_ = [];
+
+      if (found) {
+        const [handlerName, fromSlot, toSlot] = found;
+        const handler = globalThis.actionHandlers?.[handlerName];
+        if (handler) {
+          globalThis._busy = true;
+          try {
+            await handler(fromSlot, toSlot);
+          } catch (e) {
+            console.error('Action handler error:', e);
+          }
+          globalThis._busy = false;
+        }
+      }
+      return;
     }
     if (alien._over_?.[0]?.[1]?.id) {
       alien.fly = {id, moves: alien._over_};
+      // Add selection visual
+      slot.classList.add('slot-selected');
       console.log(alien.fly.id, alien.fly.moves[0][1].card)
     }
   }
