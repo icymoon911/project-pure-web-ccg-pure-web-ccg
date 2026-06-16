@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallax Runner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .game-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-repeat: repeat-x;
+            will-change: transform;
+        }
+
+        #player {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            will-change: transform;
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            will-change: transform;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .float {
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(2);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+        
+        .explosion {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .explosion-particle {
+            position: absolute;
+            pointer-events: none;
+        }
+        
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen overflow-hidden">
+    <div id="game-container" class="relative w-full h-screen overflow-hidden">
+        <!-- Game layers -->
+        <div id="sky" class="game-layer bg-gradient-to-b from-blue-900 to-purple-900"></div>
+        <div id="stars" class="game-layer">
+            <!-- Stars will be added dynamically -->
+        </div>
+        <div id="clouds" class="game-layer">
+            <!-- Clouds will be added dynamically -->
+        </div>
+        <div id="mountains" class="game-layer">
+            <!-- Mountains will be added dynamically -->
+        </div>
+        <div id="ground" class="game-layer">
+            <!-- Ground elements will be added dynamically -->
+        </div>
+        
+        <!-- Player character -->
+        <div id="player" class="text-4xl float left-[500px] text-[8rem]">🛸</div>
+
+        <!-- Game UI -->
+        <div class="fixed top-4 left-4 right-4 flex justify-between items-center">
+            <div class="bg-gray-800 px-4 py-2 rounded-lg">
+                Score: <span id="score" class="text-yellow-500">0
+            </div>
+            <div class="bg-gray-800 px-4 py-2 rounded-lg">
+                High Score: <span id="highScore" class="text-green-500">0
+            </div>
+            <div id="health" class="bg-gray-800 px-4 py-2 rounded-lg">
+                Health: ❤️❤️❤️
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOver" class="fixed inset-0 bg-black bg-opacity-75 hidden flex-col items-center justify-center">
+        <div class="text-4xl text-red-500 mb-4">Game Over!</div>
+        <div class="text-2xl text-yellow-500 mb-4">Score: <span id="finalScore">0</div>
+        <button id="restartButton" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
+            Play Again
+        </button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const healthElement = document.getElementById('health');
+
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let health = 3;
+        let isGameRunning = true;
+        let playerY = window.innerHeight / 2;
+        let obstacles = [];        
+        
+        // Initialize layers
+        const layers = {
+            stars: { speed: 1, elements: [] },
+            clouds: { speed: 2, elements: [] },
+            mountains: { speed: 3, elements: [] },
+            ground: { speed: 4, elements: [] }
+        };
+
+        // Create stars
+        function createStars() {
+            const starsLayer = document.getElementById('stars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.textContent = '⭐';
+                star.style.position = 'absolute';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.fontSize = `${Math.random() * 10 + 5}px`;
+                star.style.opacity = `${Math.random() * 0.5 + 0.5}`;
+                starsLayer.appendChild(star);
+                layers.stars.elements.push(star);
+            }
+        }
+
+        // Create clouds
+        function createClouds() {
+            const cloudsLayer = document.getElementById('clouds');
+            for (let i = 0; i < 10; i++) {
+                const cloud = document.createElement('div');
+                cloud.textContent = '☁️';
+                cloud.style.position = 'absolute';
+                cloud.style.left = `${Math.random() * 100}%`;
+                cloud.style.top = `${Math.random() * 50}%`;
+                cloud.style.fontSize = '40px';
+                cloud.style.opacity = '0.7';
+                cloudsLayer.appendChild(cloud);
+                layers.clouds.elements.push(cloud);
+            }
+        }
+
+        // Create mountains
+        function createMountains() {
+            const mountainsLayer = document.getElementById('mountains');
+            for (let i = 0; i < 5; i++) {
+                const mountain = document.createElement('div');
+                mountain.textContent = '🗻';
+                mountain.style.position = 'absolute';
+                mountain.style.left = `${i * 25}%`;
+                mountain.style.bottom = '20%';
+                mountain.style.fontSize = '100px';
+                mountainsLayer.appendChild(mountain);
+                layers.mountains.elements.push(mountain);
+            }
+        }
+
+        // Create ground elements
+        function createGround() {
+            const groundLayer = document.getElementById('ground');
+            for (let i = 0; i < 20; i++) {
+                const element = document.createElement('div');
+                element.textContent = '🌳';
+                element.style.position = 'absolute';
+                element.style.left = `${i * 10}%`;
+                element.style.bottom = '10%';
+                element.style.fontSize = '30px';
+                groundLayer.appendChild(element);
+                layers.ground.elements.push(element);
+            }
+        }
+
+        // Create obstacle
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            obstacle.textContent = '💥';
+            obstacle.style.left = '100%';
+            obstacle.style.top = `${Math.random() * 80}%`;
+            gameContainer.appendChild(obstacle);
+            obstacles.push(obstacle);
+
+            // Animate obstacle
+            const animation = obstacle.animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(-120vw)' }
+            ], {
+                duration: 3000,
+                easing: 'linear'
+            });
+
+            animation.onfinish = () => {
+                obstacle.remove();
+                obstacles = obstacles.filter(o => o !== obstacle);
+                score += 10;
+                scoreElement.textContent = score;
+            };
+        }
+
+        // Animate parallax layers
+        function animateLayers() {
+            Object.entries(layers).forEach(([layerName, layer]) => {
+                layer.elements.forEach((element, index) => {
+                    const currentLeft = parseFloat(element.style.left) || 0;
+                    let newLeft = currentLeft - layer.speed * 0.1;
+                    
+                    if (newLeft < -10) {
+                        newLeft = 110;
+                    }
+                    
+                    element.style.left = `${newLeft}%`;
+                });
+            });
+        }
+
+        // Check collisions
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+
+            obstacles.forEach(obstacle => {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                
+                if (!(playerRect.right < obstacleRect.left || 
+                    playerRect.left > obstacleRect.right || 
+                    playerRect.bottom < obstacleRect.top || 
+                    playerRect.top > obstacleRect.bottom)) {
+                    
+                    health--;
+                    healthElement.textContent = '❤️'.repeat(health);
+                    obstacle.remove();
+                    obstacles = obstacles.filter(o => o !== obstacle);
+
+                    if (health <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        // Game over
+        function gameOver() {
+            isGameRunning = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreElement.textContent = highScore;
+            }
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // Reset game
+        function resetGame() {
+            score = 0;
+            health = 3;
+            scoreElement.textContent = '0';
+            healthElement.textContent = '❤️❤️❤️';
+            obstacles.forEach(obstacle => obstacle.remove());
+            obstacles = [];
+            gameOverScreen.style.display = 'none';
+            isGameRunning = true;
+            gameLoop();
+        }
+// Add these functions after your existing code but before the game loop
+
+function createExplosion(x, y) {
+    // Create main explosion
+    const explosion = document.createElement('div');
+    explosion.className = 'explosion text-4xl text-[8rem]';
+    explosion.style.left = `${x}px`;
+    explosion.style.top = `${y}px`;
+    gameContainer.appendChild(explosion);
+
+    // Create multiple explosion particles
+    const particles = ['💥', '🔥', '✨', '💨'];
+    const particleCount = 8;
+    const radius = 50;
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'explosion-particle text-2xl';
+        particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+        particle.style.left = `${x}px`;
+        particle.style.top = `${y}px`;
+        gameContainer.appendChild(particle);
+
+        // Calculate particle trajectory
+        const angle = (i * 2 * Math.PI) / particleCount;
+        const destinationX = x + radius * Math.cos(angle);
+        const destinationY = y + radius * Math.sin(angle);
+
+        // Animate particle
+        const animation = particle.animate([
+            { 
+                transform: 'translate(0, 0) scale(1)',
+                opacity: 1 
+            },
+            { 
+                transform: `translate(${destinationX - x}px, ${destinationY - y}px) scale(0)`,
+                opacity: 0 
+            }
+        ], {
+            duration: 1000,
+            easing: 'ease-out'
+        });
+
+        animation.onfinish = () => particle.remove();
+    }
+
+    // Create shockwave effect
+    const shockwave = document.createElement('div');
+    shockwave.className = 'explosion text-6xl';
+    shockwave.textContent = '⭕';
+    shockwave.style.left = `${x}px`;
+    shockwave.style.top = `${y}px`;
+    shockwave.style.opacity = '0.5';
+    gameContainer.appendChild(shockwave);
+
+    // Animate shockwave
+    const shockwaveAnimation = shockwave.animate([
+        { transform: 'scale(0)', opacity: 0.5 },
+        { transform: 'scale(3)', opacity: 0 }
+    ], {
+        duration: 500,
+        easing: 'ease-out'
+    });
+
+    shockwaveAnimation.onfinish = () => shockwave.remove();
+
+    // Play explosion sound
+    // playExplosionSound();
+}
+
+function playExplosionSound() {
+    const audio = new Audio();
+    audio.src = 'data:audio/wav;base64,UklGRnQGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU8GAACBgIF/gn2Cf4B+gn5+fYJ/gIF/gIB/gn9+f4GBfX6Af3+AgH99f4GBgIB9f4CBgX99f4GBgIB9f4CBgYB9f4CBgYB+f4CAgoB+gICAgYB/f4CBgYB/f4CBgYB/f4CBgYB/gICBgYB/gICBgYB/gICBgYB/gICBgYF/gICBgYGAgICBgYGAgICBgYGAgICBgYGAgICBgYGAgYCBgYGAgYCBgYGAgYCBgYGAgYCBgYGAgYCBgoGAgYCBgoGAgYCBgoGAgYCBgoGAgYGBgoGAgYGBgoGAgYGBgoGAgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGBgoGBgYGCgoGBgYGCgoGBgYGCgoGBgYGCgoGBgYGCgoGBgYGCgoGBgYGCgoGBgYGCgoGBgoGCgoGBgoGCgoGBgoGCgoGBgoGCgoGBgoGCgoGBgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoGCgoKCgoGCgoKCgoGCgoKCgoGCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK';
+    audio.volume = 0.2;
+    audio.play().catch(e => console.log('Audio play failed:', e));
+}
+
+// Modify the checkCollisions function to include the explosion effect
+function checkCollisions() {
+    const playerRect = player.getBoundingClientRect();
+
+    obstacles.forEach(obstacle => {
+        const obstacleRect = obstacle.getBoundingClientRect();
+        
+        if (!(playerRect.right < obstacleRect.left || 
+            playerRect.left > obstacleRect.right || 
+            playerRect.bottom < obstacleRect.top || 
+            playerRect.top > obstacleRect.bottom)) {
+            
+            // Create explosion at collision point
+            const explosionX = (playerRect.left + playerRect.right) / 2;
+            const explosionY = (playerRect.top + playerRect.bottom) / 2;
+            createExplosion(explosionX, explosionY);
+
+            // Screen shake effect
+            gameContainer.animate([
+                { transform: 'translate(0, 0)' },
+                { transform: 'translate(-5px, 5px)' },
+                { transform: 'translate(5px, -5px)' },
+                { transform: 'translate(-5px, -5px)' },
+                { transform: 'translate(5px, 5px)' },
+                { transform: 'translate(0, 0)' }
+            ], {
+                duration: 500,
+                easing: 'ease-in-out'
+            });
+
+            health--;
+            healthElement.textContent = '❤️'.repeat(health);
+            obstacle.remove();
+            obstacles = obstacles.filter(o => o !== obstacle);
+
+            if (health <= 0) {
+                createExplosion(explosionX, explosionY); // Final explosion
+                setTimeout(() => gameOver(), 500);
+            }
+        }
+    });
+}
+
+
+        // Game loop
+        function gameLoop() {
+            if (!isGameRunning) return;
+
+            animateLayers();
+            checkCollisions();
+
+            if (Math.random() < 0.02) {
+                createObstacle();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Player movement
+        document.addEventListener('mousemove', (e) => {
+            if (!isGameRunning) return;
+            
+            const containerRect = gameContainer.getBoundingClientRect();
+            const relativeY = e.clientY - containerRect.top;
+            playerY = Math.max(50, Math.min(containerRect.height - 50, relativeY));
+            
+            player.animate([
+                { transform: `translateY(${playerY}px)` }
+            ], {
+                duration: 100,
+                fill: 'forwards'
+            });
+        });
+
+        // Touch movement for mobile
+        document.addEventListener('touchmove', (e) => {
+            if (!isGameRunning) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const containerRect = gameContainer.getBoundingClientRect();
+            const relativeY = touch.clientY - containerRect.top;
+            playerY = Math.max(50, Math.min(containerRect.height - 50, relativeY));
+            
+            player.animate([
+                { transform: `translateY(${playerY}px)` }
+            ], {
+                duration: 100,
+                fill: 'forwards'
+            });
+        }, { passive: false });
+
+        // Restart button
+        document.getElementById('restartButton').addEventListener('click', resetGame);
+
+        // Initialize game
+        createStars();
+        createClouds();
+        createMountains();
+        createGround();
+        highScoreElement.textContent = highScore;
+        gameLoop();
+    </script>
+</body>
+</html>

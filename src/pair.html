@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Párkereső játék</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    /* Kártya alapstílusok és háttérpozíciók */
+    .card-face {
+      width: 64px;
+      height: 64px;
+      background-image: url('../sprites/floor-galaxy.png');
+      background-size: 300px 300px;
+      transition: transform 0.3s;
+      border-radius: 0.5rem;
+    }
+
+    .pos-1 { background-position: 0% 0%; }
+    .pos-2 { background-position: -50% 0%; }
+    .pos-3 { background-position: -100% 0%; }
+    .pos-4 { background-position: 0% -50%; }
+    .pos-5 { background-position: -50% -50%; }
+    .pos-6 { background-position: -100% -50%; }
+    .pos-7 { background-position: 0% -100%; }
+    .pos-8 { background-position: -50% -100%; }
+    .pos-9 { background-position: -100% -100%; }
+
+    .card {
+      perspective: 1000px;
+      cursor: pointer;
+      position: relative;
+      width: 4rem;
+      height: 4rem;
+    }
+
+    .card-inner {
+      transition: transform 0.5s;
+      transform-style: preserve-3d;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-front, .card-back {
+      position: absolute; 
+      top: 0; left: 0; 
+      width: 100%; height: 100%; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      backface-visibility: hidden;
+    }
+
+    .card-front {
+      transform: rotateY(180deg);
+    }
+
+    .card-back {
+      background-color: #9ca3af; /* gray-400 */
+    }
+  </style>
+</head>
+<body class="bg-black text-zinc-400 p-4">
+
+<!-- Kezdő modal (a játék indulása előtt) -->
+<div id="startModal" class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded shadow-lg max-w-sm w-full text-center">
+    <h2 class="text-2xl font-bold mb-4">Üdv a Párkereső Játékban!</h2>
+    <p class="mb-4">
+      A feladatod megtalálni az összes képpárt, mielőtt lejár az idő. Minden szinttel kevesebb időd lesz.<br>
+      Sok sikert!
+    </p>
+    <button id="startBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+      Játék indítása
+    </button>
+  </div>
+</div>
+
+<!-- Általános üzenetmodal (szintteljesítés, idő lejárta stb.) -->
+<div id="messageModal" class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50 hidden">
+  <div class="bg-white p-6 rounded shadow-lg max-w-sm w-full text-center">
+    <h2 class="text-2xl font-bold mb-4" id="messageModalTitle"></h2>
+    <p class="mb-4" id="messageModalText"></p>
+    <button id="messageModalBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+      OK
+    </button>
+  </div>
+</div>
+
+<div class="max-w-xl mx-auto text-center mb-4">
+  <h1 class="text-3xl font-bold mb-2">Párkereső játék</h1>
+  <p class="text-gray-700">Szint: <span id="level">1</span> | Hátralévő idő: <span id="timeLeft"></span> mp</p>
+</div>
+
+<div id="gameBoard" class="max-w-xl mx-auto grid grid-cols-6 gap-2 bg-black">
+  <!-- Kártyák ide kerülnek JS-ből -->
+</div>
+
+<!-- Kártya template -->
+<template id="cardTemplate">
+  <div class="card">
+    <div class="card-inner">
+      <div class="card-front card-face"></div>
+      <div class="card-back"></div>
+    </div>
+  </div>
+</template>
+
+<script>
+  let level = 1;
+  let baseTime = 60; // Kezdő szint: 60 mp
+  let timeLeft = baseTime;
+  let timerInterval = null;
+  let lockBoard = false;
+  let firstCard = null;
+  let secondCard = null;
+
+  const cardTypes = [1,2,3,4,5,6,7,8,9];
+  let cards = [];
+
+  const gameBoard = document.getElementById('gameBoard');
+  const levelDisplay = document.getElementById('level');
+  const timeLeftDisplay = document.getElementById('timeLeft');
+
+  const startModal = document.getElementById('startModal');
+  const startBtn = document.getElementById('startBtn');
+
+  const messageModal = document.getElementById('messageModal');
+  const messageModalTitle = document.getElementById('messageModalTitle');
+  const messageModalText = document.getElementById('messageModalText');
+  const messageModalBtn = document.getElementById('messageModalBtn');
+
+  const cardTemplate = document.getElementById('cardTemplate');
+
+  startBtn.addEventListener('click', () => {
+    startModal.style.display = 'none';
+    startGame();
+  });
+
+  messageModalBtn.addEventListener('click', () => {
+    hideMessageModal();
+    if (messageModal.callback) {
+      messageModal.callback();
+      messageModal.callback = null;
+    }
+  });
+
+  function showMessageModal(title, text, callback = null) {
+    messageModalTitle.textContent = title;
+    messageModalText.textContent = text;
+    messageModal.style.display = 'flex';
+    messageModal.classList.remove('hidden');
+    messageModal.callback = callback;
+  }
+
+  function hideMessageModal() {
+    messageModal.style.display = 'none';
+    messageModal.classList.add('hidden');
+  }
+
+  function setupCards() {
+    cards = [...cardTypes, ...cardTypes]; 
+    shuffle(cards);
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  function createBoard() {
+    gameBoard.innerHTML = '';
+    cards.forEach(type => {
+      const cardEl = cardTemplate.content.cloneNode(true);
+      const card = cardEl.querySelector('.card');
+      const cardFront = cardEl.querySelector('.card-front');
+
+      // Beállítjuk a kártya típusát
+      card.dataset.type = type;
+
+      // Hozzáadjuk a megfelelő háttér-pozíció osztályt
+      cardFront.classList.add(`pos-${type}`);
+
+      card.addEventListener('click', flipCard);
+      gameBoard.appendChild(cardEl);
+    });
+  }
+
+  function startGame() {
+    level = 1;
+    startLevel(level);
+  }
+
+  function startLevel(lv) {
+    levelDisplay.textContent = lv;
+    timeLeft = baseTime - (lv-1)*10;
+    if (timeLeft < 10) timeLeft = 10;
+    setupCards();
+    createBoard();
+    startTimer();
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timeLeftDisplay.textContent = timeLeft;
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timeLeftDisplay.textContent = timeLeft;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        showMessageModal('Idő lejárt!', 'Sajnos kifutottál az időből. Újra próbálkozol?', () => {
+          startGame();
+        });
+      }
+    }, 1000);
+  }
+
+  function flipCard() {
+    if (lockBoard) return;
+    if (this.classList.contains('flipped')) return;
+
+    this.classList.add('flipped');
+    if (!firstCard) {
+      firstCard = this;
+      return;
+    }
+
+    secondCard = this;
+    checkForMatch();
+  }
+
+  function checkForMatch() {
+    let isMatch = firstCard.dataset.type === secondCard.dataset.type;
+    if (isMatch) {
+      disableCards();
+      checkWin();
+    } else {
+      unflipCards();
+    }
+  }
+
+  function disableCards() {
+    firstCard.removeEventListener('click', flipCard);
+    secondCard.removeEventListener('click', flipCard);
+    resetBoardState();
+  }
+
+  function unflipCards() {
+    lockBoard = true;
+    setTimeout(() => {
+      firstCard.classList.remove('flipped');
+      secondCard.classList.remove('flipped');
+      resetBoardState();
+    }, 1000);
+  }
+
+  function resetBoardState() {
+    [firstCard, secondCard] = [null, null];
+    lockBoard = false;
+  }
+
+  function checkWin() {
+    const flippedCards = document.querySelectorAll('.card.flipped');
+    if (flippedCards.length === cards.length) {
+      clearInterval(timerInterval);
+      showMessageModal('Szint teljesítve!', 'Gratulálok, tovább a következő szintre!', () => {
+        level++;
+        startLevel(level);
+      });
+    }
+  }
+</script>
+
+</body>
+</html>

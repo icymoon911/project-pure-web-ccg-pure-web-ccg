@@ -1,0 +1,28 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<body class="bg-sky-950"></body><!-- lol this is look so stupid, but works -->
+<main class="min-h-screen bg-zinc-800 text-zinc-400 scroll-smooth">
+  <article class="p-4 max-w-screen-md m-auto bg-zinc-900 whitespace-pre-wrap">
+    This is a VIM edior Web Component basic as possible.
+    Maybe the data can be store in local store.
+    <p><span>mode: </span><slot></slot></p>
+    <textarea class="
+      bg-zinc-800 
+      text-zinc-400 
+      p-2
+      focus:outline-none
+      min-w-[100%]
+      min-h-[50vh]
+    "></textarea>
+
+    Mode: NORMAL, INSERT, COMMAND
+
+    VIM Moves:
+  </article>
+</main>
+<script>
+  let editor = document.querySelector('textarea');
+  let mode = document.querySelector('slot');
+  mode.innerText = 'NORMAL'
+  
+</script>
+  

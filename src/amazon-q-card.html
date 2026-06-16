@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="text-center">
+        <h1 class="text-3xl font-bold mb-6">Memory Card Game</h1>
+        <div id="game-board" class="grid grid-cols-4 gap-4 mb-6">
+            <!-- Cards will be dynamically inserted here -->
+        </div>
+        <button id="reset-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Reset Game
+        </button>
+    </div>
+    <script>
+        const cards = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+        const gameBoard = document.getElementById('game-board');
+        const resetBtn = document.getElementById('reset-btn');
+        let flippedCards = [];
+        let matchedPairs = 0;
+
+        function createCard(symbol) {
+            const card = document.createElement('div');
+            card.className = 'bg-white w-20 h-20 rounded-lg shadow-md flex items-center justify-center text-4xl cursor-pointer transform transition-transform duration-300 hover:scale-105';
+            card.innerHTML = '<span class="hidden">' + symbol + '';
+            card.addEventListener('click', flipCard);
+            return card;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function initializeGame() {
+            gameBoard.innerHTML = '';
+            matchedPairs = 0;
+            const shuffledCards = shuffleArray([...cards, ...cards]);
+            shuffledCards.forEach(symbol => {
+                gameBoard.appendChild(createCard(symbol));
+            });
+        }
+
+        function flipCard() {
+            if (flippedCards.length < 2 && !this.classList.contains('matched')) {
+                this.querySelector('span').classList.remove('hidden');
+                this.classList.add('bg-yellow-200');
+                flippedCards.push(this);
+
+                if (flippedCards.length === 2) {
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.textContent === card2.textContent) {
+                card1.classList.add('matched', 'bg-green-200');
+                card2.classList.add('matched', 'bg-green-200');
+                matchedPairs++;
+                if (matchedPairs === cards.length) {
+                    setTimeout(() => alert('Congratulations! You won!'), 300);
+                }
+            } else {
+                card1.querySelector('span').classList.add('hidden');
+                card2.querySelector('span').classList.add('hidden');
+                card1.classList.remove('bg-yellow-200');
+                card2.classList.remove('bg-yellow-200');
+            }
+            flippedCards = [];
+        }
+
+        resetBtn.addEventListener('click', initializeGame);
+        initializeGame();
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .board-3d {
+        transform-style: preserve-3d;
+        transform:
+          perspective(700px)
+          rotateX(55deg)
+          rotateY(0deg)
+          rotateZ(0deg)
+          translateZ(-100px);
+    }
+  </style>
+<main class="bg-zinc-800 text-zinc-400 min-h-screen grid place-items-center">
+  <section id="desk" class="
+    bg-sky-950
+    outline
+    outline-1
+    outline-zinc-400
+    w-[50vw]
+    h-[50vh]
+    p-8
+    board-3d
+    "
+  >
+    this is the table<br>
+    which contain a lot of text
+  </section>
+  <section id="desk" class="
+    bg-sky-950
+    outline
+    outline-1
+    outline-zinc-400
+    w-[20vw]
+    h-[40vh]
+    p-4
+    board-3d
+    translate-x-[5vw]
+    -translate-y-[12vh]
+    "
+  >
+    O - O
+  </section>
+</main>

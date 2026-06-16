@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <h1 class="text-3xl font-bold mb-4">Emoji RPG</h1>
+    <div id="game-area" class="w-96 h-32 bg-green-200 relative overflow-hidden mb-4">
+        <div id="player" class="absolute bottom-0 text-4xl transition-all duration-200">😊</div>
+    </div>
+    <div id="controls" class="flex gap-4 mb-4">
+        <button id="left-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            ⬅️ Left
+        </button>
+        <button id="right-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Right ➡️
+        </button>
+    </div>
+    <p class="mb-2 text-sm text-gray-600">Use arrow keys or buttons to move</p>
+    <div id="quest-log" class="w-96 h-32 bg-white p-2 overflow-y-auto border border-gray-300 rounded"></div>
+
+    <script>
+        class EmojiRPG {
+            constructor() {
+                this.player = document.getElementById('player');
+                this.gameArea = document.getElementById('game-area');
+                this.questLog = document.getElementById('quest-log');
+                this.leftBtn = document.getElementById('left-btn');
+                this.rightBtn = document.getElementById('right-btn');
+                this.playerPosition = 0;
+                this.npcs = [
+                    { emoji: '🧙‍♂️', position: 50, quest: 'Find my magic wand!' },
+                    { emoji: '🐉', position: 250, quest: 'Bring me a golden apple!' },
+                    { emoji: '🏰', position: 350, quest: 'Rescue the princess!' }
+                ];
+                this.enemy = { emoji: '👹', position: 150, attackInterval: null };
+
+                this.leftBtn.addEventListener('click', () => this.movePlayer(-10));
+                this.rightBtn.addEventListener('click', () => this.movePlayer(10));
+                document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+
+                this.renderNPCs();
+                this.renderEnemy();
+                this.startEnemyTurn();
+            }
+
+            handleKeyPress(e) {
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        this.movePlayer(-10);
+                        break;
+                    case 'ArrowRight':
+                        this.movePlayer(10);
+                        break;
+                }
+            }
+
+            movePlayer(distance) {
+                this.playerPosition += distance;
+                this.playerPosition = Math.max(0, Math.min(this.playerPosition, this.gameArea.offsetWidth - 40));
+                this.player.style.left = `${this.playerPosition}px`;
+                this.checkInteractions();
+            }
+
+            renderNPCs() {
+                this.npcs.forEach(npc => {
+                    const npcElement = document.createElement('div');
+                    npcElement.className = 'absolute bottom-0 text-4xl';
+                    npcElement.style.left = `${npc.position}px`;
+                    npcElement.textContent = npc.emoji;
+                    this.gameArea.appendChild(npcElement);
+                });
+            }
+
+            renderEnemy() {
+                const enemyElement = document.createElement('div');
+                enemyElement.id = 'enemy';
+                enemyElement.className = 'absolute bottom-0 text-4xl';
+                enemyElement.style.left = `${this.enemy.position}px`;
+                enemyElement.textContent = this.enemy.emoji;
+                this.gameArea.appendChild(enemyElement);
+            }
+
+            startEnemyTurn() {
+                this.enemy.attackInterval = setInterval(() => {
+                    this.moveEnemy();
+                    this.checkEnemyAttack();
+                }, 1000);
+            }
+
+            moveEnemy() {
+                const moveDistance = Math.random() > 0.5 ? 10 : -10;
+                this.enemy.position += moveDistance;
+                this.enemy.position = Math.max(0, Math.min(this.enemy.position, this.gameArea.offsetWidth - 40));
+                document.getElementById('enemy').style.left = `${this.enemy.position}px`;
+            }
+
+            checkInteractions() {
+                this.npcs.forEach(npc => {
+                    if (Math.abs(this.playerPosition - npc.position) < 20) {
+                        this.interact(npc);
+                    }
+                });
+            }
+
+            interact(npc) {
+                const questEntry = document.createElement('p');
+                questEntry.textContent = `${npc.emoji} Quest: ${npc.quest}`;
+                this.questLog.prepend(questEntry);
+            }
+
+            checkEnemyAttack() {
+                if (Math.abs(this.playerPosition - this.enemy.position) < 20) {
+                    const attackEntry = document.createElement('p');
+                    attackEntry.textContent = `${this.enemy.emoji} attacked you!`;
+                    attackEntry.className = 'text-red-500';
+                    this.questLog.prepend(attackEntry);
+                }
+            }
+        }
+
+        new EmojiRPG();
+    </script>
+</body>
+</html>

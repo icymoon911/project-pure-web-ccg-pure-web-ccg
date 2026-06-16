@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SVG 3D Gizmo</title>
+  <style>
+    body {
+      background-color: #222;
+    }
+  </style>
+</head>
+<body>
+
+<svg width="100vw" height="100vh" viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- Front square -->
+    <polygon points="-20,-20 20,-20 20,20 -20,20" fill="none" stroke="black" stroke-width="2"/>
+    <!-- Back square (shifted to create a pseudo 3D effect) -->
+    <polygon points="-15,-15 25,-15 25,25 -15,25" fill="none" stroke="#555" stroke-width="2"/>
+    <!-- Connecting lines between front and back squares -->
+    <line x1="-20" y1="-20" x2="-15" y2="-15" stroke="#333" stroke-width="2"/>
+    <line x1="20" y1="-20" x2="25" y2="-15" stroke="#333" stroke-width="2"/>
+    <line x1="20" y1="20" x2="25" y2="25" stroke="#333" stroke-width="2"/>
+    <line x1="-20" y1="20" x2="-15" y2="25" stroke="#333" stroke-width="2"/>
+
+    <!-- Rotation animation -->
+    <animateTransform attributeName="transform"
+                      type="rotate"
+                      from="0 0 0"
+                      to="360 0 0"
+                      dur="5s"
+                      repeatCount="indefinite"/>
+  </g>
+</svg>
+
+</body>
+</html>

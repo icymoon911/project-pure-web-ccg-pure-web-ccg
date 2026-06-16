@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Joker</title>
+</head>
+<body class="bg-black text-zinc-400 min-h-screen">
+  <div id="foo"></div>
+  <template id="A01">
+    <article class="m-4 max-w-[25rem] mx-auto">
+      <section class="grid gap-4">
+        <h1 class="text-sky-400">Clone of my Article</h1>
+        <p>Shame, I don't win the competition</p>
+        <span>What is fail: the drag-n-drop is not so easy implement to all different device, missing the animations, and don't have beging of game, so I think this time is too narrow for the competition</span>
+        <span>Still focus of one thing: change drag-n-drop to click and move</span>
+        <p>I create another challeng to me: fork the alien-solitare to pure jsDoc/HTML solution. This templating stuff is very promising. Maybe sometimes need to compare this speed with React or Qwik speed. </p>
+        <p>Yes Qwik is good idea how can I handle the state.</p>
+        <p>This is clear: I saw the types, but the syntax highlighting is not working inside of HTML page</p>
+        <p>Animals are walking random among us</p>
+        <span>so this stetup is already good for make a complex solution without using a framework, so the next stuff wich I need to clerify is the state managment, and how can I simplify a dalibase process by this very nice template solution</span>
+        <span>What name is fine for a wanabe js framework: Spaghetti JS</span>
+        <span>The base things: jsDoc/HTML/JS code. Force to write one file only program, compile is forbidden.</span>
+      </section>
+    </article>
+  </template>
+  <template id="animal">
+    <div class="transition-all duration-[3s] ease-in-out border-8 p-2 border-black/40 rounded-2xl text-sky-100 fixed bg-orange-700 select-none">
+      <p id="name"></p>
+    </div>
+  </template>
+  <h1 class="text-orange-400 m-8 text-lg">Clone Wars lets start it!</h1>
+</body>
+<script>
+  /** @type {(...rest:any) => HTMLElement} JS framework */
+  const $ = (...params) => document.querySelector(...params);
+
+  /** @type {(incoming:string) => void} Example01*/
+  const run = (incoming) => $('body').innerHTML = incoming;
+
+  const ArticleTemplate = $('#A01');
+  const arti = ArticleTemplate.content.cloneNode(true);
+  const arti2 = ArticleTemplate.content.cloneNode(true);
+  $('body').appendChild(arti);
+  // $('body').appendChild(arti2);
+
+  /** @type {(name:string, color:string) => HTMLElement} */
+  const createAnimal = (name, color) => {
+    const animal = $('#animal').content.cloneNode(true);
+    animal.querySelector('p').innerHTML = name;
+    const ani = animal.querySelector('div');
+    ani.style.backgroundColor = color;
+    ani.style.left = Math.random() * 20 + 'rem';
+    ani.style.top = Math.random() * 20 + 'rem';
+    animal.id = name;
+    ani.addEventListener("mouseenter", () => {
+      ani.style.left = Math.random() * 30 + 'rem';
+      ani.style.top = Math.random() * 30 + 'rem'; 
+    })
+
+    $('body').appendChild(animal);
+    return animal; 
+  };
+
+  createAnimal('DUCK', '#952A');
+  createAnimal('FOX', '#D44A');
+  createAnimal('SHARK', '#224A');
+  createAnimal('LEMUR', '#137A');
+  createAnimal('LEO', '#AA7A');
+  createAnimal('MONKEY', '#743A');
+  createAnimal('SNAKE', '#849A');
+  createAnimal('EAGLE', '#263A');
+  const exo = createAnimal('EXO JS', '#3A3A');
+  createAnimal('AGEOF JS', '#B23A');
+  createAnimal('LAST JS', '#62AA');
+  createAnimal('SPAGHETTI JS', '#FA2A');
+  createAnimal('ROCK JS', '#345A');
+
+</script>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Card Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.0.0/dist/tailwind.min.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.0.0/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-800 text-white" x-data="battleState()">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">Fantasy Card Game</h1>
+        <div class="mb-8 text-center">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" @click="startBattle()">Start Battle</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Card 1 -->
+            <div class="bg-gray-700 p-6 rounded-lg shadow-lg" x-show="!battleOver">
+                <h2 class="text-xl font-bold mb-2">Card: Fire Mage</h2>
+                <p class="mb-2"><strong>Problem:</strong> Enemy Attack</p>
+                <p class="mb-2"><strong>Solution:</strong> Cast Fireball</p>
+                <p class="mb-2"><strong>Level:</strong> 3</p>
+                <p class="mb-2"><strong>Cast:</strong> Mage</p>
+                <p class="mb-2"><strong>Skill:</strong> Deals massive fire damage to all enemies in range.</p>
+                <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-4" @click="useSkill('Fire Mage')">Use Skill</button>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="bg-gray-700 p-6 rounded-lg shadow-lg" x-show="!battleOver">
+                <h2 class="text-xl font-bold mb-2">Card: Earth Guardian</h2>
+                <p class="mb-2"><strong>Problem:</strong> Defend Allies</p>
+                <p class="mb-2"><strong>Solution:</strong> Summon Earth Shield</p>
+                <p class="mb-2"><strong>Level:</strong> 4</p>
+                <p class="mb-2"><strong>Cast:</strong> Guardian</p>
+                <p class="mb-2"><strong>Skill:</strong> Provides a strong shield that absorbs incoming damage.</p>
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4" @click="useSkill('Earth Guardian')">Use Skill</button>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="bg-gray-700 p-6 rounded-lg shadow-lg" x-show="!battleOver">
+                <h2 class="text-xl font-bold mb-2">Card: Wind Ranger</h2>
+                <p class="mb-2"><strong>Problem:</strong> Quick Escape</p>
+                <p class="mb-2"><strong>Solution:</strong> Swift Wind Dash</p>
+                <p class="mb-2"><strong>Level:</strong> 2</p>
+                <p class="mb-2"><strong>Cast:</strong> Ranger</p>
+                <p class="mb-2"><strong>Skill:</strong> Increases agility and allows a quick escape from danger.</p>
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" @click="useSkill('Wind Ranger')">Use Skill</button>
+            </div>
+        </div>
+        <div class="mt-8 text-center" x-show="battleOver">
+            <h2 class="text-2xl font-bold">Battle Over</h2>
+            <p x-text="battleResult"></p>
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" @click="resetBattle()">Reset Battle</button>
+        </div>
+    </div>
+
+    <script>
+        function battleState() {
+            return {
+                battleOver: false,
+                battleResult: '',
+                startBattle() {
+                    this.battleOver = false;
+                    this.battleResult = '';
+                },
+                useSkill(character) {
+                    // For simplicity, decide battle outcome randomly
+                    const success = Math.random() > 0.5;
+                    this.battleResult = success ? `${character} successfully used their skill!` : `${character} failed to use their skill.`;
+                    this.battleOver = true;
+                },
+                resetBattle() {
+                    this.battleOver = false;
+                    this.battleResult = '';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

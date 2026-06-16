@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen font-mono p-4">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-green-500 mb-2">HTML Collection</h1>
+            <p class="text-gray-400">Pure Web Components Library</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <!-- Search and Filter -->
+            <div class="md:col-span-2 lg:col-span-3 flex gap-4 mb-4">
+                <input 
+                    type="text" 
+                    id="search" 
+                    placeholder="Search pages..." 
+                    class="bg-gray-800 text-gray-300 px-4 py-2 rounded-lg flex-grow"
+                >
+                <select 
+                    id="filter" 
+                    class="bg-gray-800 text-gray-300 px-4 py-2 rounded-lg"
+                >
+                    <option value="all">All Categories</option>
+                    <option value="game">Games</option>
+                    <option value="tool">Tools</option>
+                    <option value="component">Components</option>
+                    <option value="article">Articles</option>
+                </select>
+            </div>
+
+            <!-- Cards Container -->
+            <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Cards will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Page data structure
+        const pages = [
+            {
+                title: "VIM Motion Master",
+                description: "Practice VIM motions in a gamified environment",
+                path: "/vim-motion.html",
+                category: "game",
+                tags: ["vim", "practice", "keyboard"],
+                lastModified: "2024-01-20",
+                preview: "🎮"
+            },
+            {
+                title: "Apocalypse Maze",
+                description: "Post-apocalyptic labyrinth survival game",
+                path: "/apocalypse-maze.html",
+                category: "game",
+                tags: ["game", "maze", "survival"],
+                lastModified: "2024-01-19",
+                preview: "🏃"
+            },
+            {
+                title: "Tailwind Article",
+                description: "Article about Tailwind CSS usage",
+                path: "/tailwind-article.html",
+                category: "article",
+                tags: ["tailwind", "css", "tutorial"],
+                lastModified: "2024-01-18",
+                preview: "📝"
+            }
+            // Add more pages as needed
+        ];
+
+        function createCard(page) {
+            return `
+                <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors duration-200">
+                    <div class="text-4xl mb-4 text-center">${page.preview}</div>
+                    <h2 class="text-xl font-bold text-green-400 mb-2">${page.title}</h2>
+                    <p class="text-gray-400 mb-4">${page.description}</p>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${page.tags.map(tag => `
+                            <span class="bg-gray-600 text-xs px-2 py-1 rounded">${tag}
+                        `).join('')}
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-500">📅 ${page.lastModified}
+                        <a 
+                            href="${page.path}" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                            target="_blank"
+                        >
+                            View
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateCards(searchTerm = '', category = 'all') {
+            const container = document.getElementById('cards-container');
+            const filteredPages = pages.filter(page => {
+                const matchesSearch = 
+                    page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    page.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    page.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                
+                const matchesCategory = category === 'all' || page.category === category;
+                
+                return matchesSearch && matchesCategory;
+            });
+
+            container.innerHTML = filteredPages.map(createCard).join('');
+        }
+
+        // Event listeners
+        document.getElementById('search').addEventListener('input', (e) => {
+            const category = document.getElementById('filter').value;
+            updateCards(e.target.value, category);
+        });
+
+        document.getElementById('filter').addEventListener('change', (e) => {
+            const searchTerm = document.getElementById('search').value;
+            updateCards(searchTerm, e.target.value);
+        });
+
+        // Initial render
+        updateCards();
+
+        // Add keyboard shortcut for search focus
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('search').focus();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wasteland Enigma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen font-sans p-4">
+    <div id="game-container" class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-4 text-yellow-500">Wasteland Enigma</h1>
+        <div id="game-stats" class="mb-4 flex justify-between text-sm">
+            <div>Health: <span id="health">100</div>
+            <div>Items: <span id="items">0</div>
+        </div>
+        <div id="game-area" class="bg-gray-800 p-4 rounded-lg mb-4 h-64 overflow-y-auto"></div>
+        <div id="options" class="grid grid-cols-2 gap-2 mb-4"></div>
+        <div id="message" class="text-center text-lg font-semibold h-8 mb-4"></div>
+    </div>
+
+    <script>
+        const player = '🧍';
+        const items = ['🔧', '🔋', '🧪', '📡'];
+        const npcs = ['👨‍🔧', '👩‍🔬', '🧙‍♂️'];
+        const enemies = ['🦹', '👾', '🧟'];
+
+        let health = 100;
+        let inventory = [];
+        let currentScene = 0;
+
+        const scenes = [
+            {
+                description: "You wake up in a desolate wasteland 🏚️. A mysterious figure 🧙‍♂️ approaches.",
+                options: [
+                    { text: "Talk to the figure", nextScene: 1 },
+                    { text: "Run away", nextScene: 2 }
+                ]
+            },
+            {
+                description: "The figure speaks: 'To save this world, you must collect the four artifacts of power.'",
+                options: [
+                    { text: "Accept the quest", nextScene: 3 },
+                    { text: "Decline", nextScene: 2 }
+                ]
+            },
+            {
+                description: "You wander the wasteland alone, unsure of your purpose.",
+                options: [
+                    { text: "Keep exploring", nextScene: 4 },
+                    { text: "Rest", nextScene: 5 }
+                ]
+            },
+            {
+                description: "You begin your quest. In the distance, you see a ruined city 🏙️ and a dark forest 🌳.",
+                options: [
+                    { text: "Go to the city", nextScene: 6 },
+                    { text: "Enter the forest", nextScene: 7 }
+                ]
+            },
+            {
+                description: "You encounter a group of survivors 👥. They look wary.",
+                options: [
+                    { text: "Trade with them", nextScene: 8 },
+                    { text: "Ask for information", nextScene: 9 }
+                ]
+            },
+            {
+                description: "You find a safe place to rest and recover some health.",
+                options: [
+                    { text: "Continue journey", nextScene: 3 }
+                ]
+            },
+            {
+                description: "In the city ruins, you find a hidden lab 🧪. A robot guard 🤖 blocks your path.",
+                options: [
+                    { text: "Fight the robot", nextScene: 10 },
+                    { text: "Try to sneak past", nextScene: 11 }
+                ]
+            },
+            {
+                description: "The forest is dark and mysterious. You hear strange noises 👂.",
+                options: [
+                    { text: "Investigate the sounds", nextScene: 12 },
+                    { text: "Look for a way out", nextScene: 13 }
+                ]
+            },
+            {
+                description: "The survivors trade you a strange device 📡 for some of your supplies.",
+                options: [
+                    { text: "Examine the device", nextScene: 14 },
+                    { text: "Continue your journey", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The survivors tell you about an ancient temple 🏛️ that might hold one of the artifacts.",
+                options: [
+                    { text: "Go to the temple", nextScene: 15 },
+                    { text: "Thank them and leave", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You defeat the robot and find a power source 🔋 in the lab!",
+                options: [
+                    { text: "Take the power source", nextScene: 16 },
+                    { text: "Leave it behind", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You successfully sneak past the robot and find a mysterious tool 🔧.",
+                options: [
+                    { text: "Take the tool", nextScene: 17 },
+                    { text: "Leave it behind", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You stumble upon a group of mutants 🧟. They don't look friendly.",
+                options: [
+                    { text: "Fight them", nextScene: 18 },
+                    { text: "Try to reason with them", nextScene: 19 }
+                ]
+            },
+            {
+                description: "You find a hidden path leading out of the forest.",
+                options: [
+                    { text: "Follow the path", nextScene: 20 },
+                    { text: "Go back", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The device seems to be pointing towards a distant mountain ⛰️.",
+                options: [
+                    { text: "Follow the signal", nextScene: 21 },
+                    { text: "Ignore it for now", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You reach the ancient temple. It's guarded by a mysterious entity 👻.",
+                options: [
+                    { text: "Attempt to enter", nextScene: 22 },
+                    { text: "Leave the temple", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You've acquired the power source artifact!",
+                options: [
+                    { text: "Continue your quest", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You've acquired the tool artifact!",
+                options: [
+                    { text: "Continue your quest", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You defeat the mutants and find a healing potion 🧪 among their possessions.",
+                options: [
+                    { text: "Drink the potion", nextScene: 23 },
+                    { text: "Save it for later", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The mutants are impressed by your bravery and offer you a strange amulet 🔮.",
+                options: [
+                    { text: "Accept the amulet", nextScene: 24 },
+                    { text: "Politely decline", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The path leads you to an old bunker. Inside, you find advanced technology 💻.",
+                options: [
+                    { text: "Investigate the tech", nextScene: 25 },
+                    { text: "Leave the bunker", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You reach the mountain and find a hidden entrance. It looks dangerous.",
+                options: [
+                    { text: "Enter the mountain", nextScene: 26 },
+                    { text: "Turn back", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The entity challenges you to a riddle. Answer correctly to enter.",
+                options: [
+                    { text: "Accept the challenge", nextScene: 27 },
+                    { text: "Leave the temple", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The potion heals you completely and gives you a surge of energy!",
+                options: [
+                    { text: "Continue your journey", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The amulet glows, revealing hidden paths on your journey.",
+                options: [
+                    { text: "Explore a new path", nextScene: 28 },
+                    { text: "Continue as before", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You activate the technology and gain access to a map of the wasteland 🗺️.",
+                options: [
+                    { text: "Use the map", nextScene: 29 },
+                    { text: "Leave it behind", nextScene: 3 }
+                ]
+            },
+            {
+                description: "Inside the mountain, you find an ancient forge 🔥. The final artifact must be created here.",
+                options: [
+                    { text: "Use the forge", nextScene: 30 },
+                    { text: "Look around more", nextScene: 31 }
+                ]
+            },
+            {
+                description: "You answer the riddle correctly and gain entry. Inside, you find an energy crystal 💎.",
+                options: [
+                    { text: "Take the crystal", nextScene: 32 },
+                    { text: "Leave it behind", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The new path leads you to a hidden vault 🏛️. It seems to hold great power.",
+                options: [
+                    { text: "Open the vault", nextScene: 33 },
+                    { text: "Leave it alone", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The map reveals the location of all artifacts. Your quest becomes clearer.",
+                options: [
+                    { text: "Follow the map", nextScene: 34 },
+                    { text: "Choose your own path", nextScene: 3 }
+                ]
+            },
+            {
+                description: "You combine all the artifacts in the forge. A blinding light engulfs you...",
+                options: [
+                    { text: "Embrace the light", nextScene: 35 }
+                ]
+            },
+            {
+                description: "You find ancient inscriptions that hint at the true nature of the artifacts.",
+                options: [
+                    { text: "Decipher the inscriptions", nextScene: 36 },
+                    { text: "Return to the forge", nextScene: 30 }
+                ]
+            },
+            {
+                description: "You've acquired the energy crystal artifact!",
+                options: [
+                    { text: "Continue your quest", nextScene: 3 }
+                ]
+            },
+            {
+                description: "The vault contains the final artifact, a key of immense power 🗝️.",
+                options: [
+                    { text: "Take the key", nextScene: 37 },
+                    { text: "Leave it behind", nextScene: 3 }
+                ]
+            },
+            {
+                description: "With the map's guidance, you quickly gather all remaining artifacts.",
+                options: [
+                    { text: "Head to the forge", nextScene: 30 }
+                ]
+            },
+            {
+                description: "As the light fades, you find yourself transformed. The wasteland begins to heal around you.",
+                options: [
+                    { text: "Embrace your new role", nextScene: 38 }
+                ]
+            },
+            {
+                description: "The inscriptions reveal a terrible truth about the artifacts and their purpose.",
+                options: [
+                    { text: "Use this knowledge", nextScene: 39 },
+                    { text: "Ignore the warning", nextScene: 30 }
+                ]
+            },
+            {
+                description: "You've acquired the key artifact!",
+                options: [
+                    { text: "Complete your quest", nextScene: 30 }
+                ]
+            },
+            {
+                description: "Congratulations! You've completed your quest and saved the wasteland. The world begins anew under your guidance.",
+                options: [
+                    { text: "Start a new game", nextScene: 0 }
+                ]
+            },
+            {
+                description: "Armed with the truth, you make a different choice. The wasteland remains, but hope for a better future dawns.",
+                options: [
+                    { text: "Start a new game", nextScene: 0 }
+                ]
+            }
+        ];
+
+        function updateScene() {
+            const scene = scenes[currentScene];
+            document.getElementById('game-area').innerHTML = scene.description;
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+            scene.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option.text;
+                button.className = 'bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors duration-200';
+                button.onclick = () => {
+                    currentScene = option.nextScene;
+                    updateScene();
+                    if (Math.random() < 0.3) {
+                        encounterEvent();
+                    }
+                };
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function encounterEvent() {
+            const eventType = Math.random();
+            if (eventType < 0.4) {
+                // Find item
+                const item = items[Math.floor(Math.random() * items.length)];
+                inventory.push(item);
+                showMessage(`You found a ${item}!`);
+            } else if (eventType < 0.7) {
+                // Encounter enemy
+                const enemy = enemies[Math.floor(Math.random() * enemies.length)];
+                health -= 20;
+                showMessage(`You encountered a ${enemy} and lost 20 health!`);
+            } else {
+                // Heal
+                health = Math.min(100, health + 10);
+                showMessage("You found a safe spot and recovered 10 health.");
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('health').textContent = health;
+            document.getElementById('items').textContent = inventory.length;
+            if (health <= 0) {
+                showMessage("Game Over! You didn't survive the wasteland.");
+                setTimeout(() => {
+                    health = 100;
+                    inventory = [];
+                    currentScene = 0;
+                    updateScene();
+                    updateStats();
+                }, 3000);
+            }
+        }
+
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            setTimeout(() => messageElement.textContent = '', 3000);
+        }
+
+        updateScene();
+        updateStats();
+    </script>
+</body>
+</html>

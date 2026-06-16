@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detective's Dilemma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 min-h-screen font-sans p-4 text-gray-300">
+    <div id="game-container" class="max-w-md mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <div class="p-4">
+            <h1 class="text-2xl font-bold text-center mb-4 text-yellow-500">Detective's Dilemma</h1>
+            <div id="case-info" class="mb-4">
+                <h2 id="case-title" class="text-xl font-semibold mb-2 text-blue-400"></h2>
+                <p id="case-description" class="text-gray-400"></p>
+            </div>
+            <div id="suspects" class="grid grid-cols-2 gap-4 mb-4"></div>
+            <div id="dialog" class="hidden mb-4 p-4 bg-gray-700 rounded-lg">
+                <p id="dialog-text" class="mb-2"></p>
+                <button id="close-dialog" class="w-full py-2 px-4 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-200">Close</button>
+            </div>
+            <div id="message" class="text-center text-lg font-semibold h-8 mb-4"></div>
+            <button id="solve" class="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">Solve Case</button>
+        </div>
+    </div>
+
+    <script>
+        const cases = [
+            {
+                title: "The Museum Heist",
+                setup: "A priceless artifact has been stolen from the city museum.",
+                description: "The security cameras were disabled, and the glass case was cut with precision. The theft occurred during a busy day at the museum.",
+                actors: [
+                    { 
+                        name: "Sneaky Steve", 
+                        emoji: "🕵️", 
+                        role: "Security Guard",
+                        dialogue: "I was on my regular patrol. Didn't see anything suspicious, but the cameras were acting up that day."
+                    },
+                    { 
+                        name: "Artistic Anna", 
+                        emoji: "👩‍🎨", 
+                        role: "Curator",
+                        dialogue: "I was giving a tour to a group of art students when the alarm went off. I'm devastated about the loss."
+                    },
+                    { 
+                        name: "Techy Tom", 
+                        emoji: "👨‍💻", 
+                        role: "IT Specialist",
+                        dialogue: "I was updating the security software that day. Strange coincidence, huh? But I assure you, I had nothing to do with this."
+                    },
+                    { 
+                        name: "Visitor Vera", 
+                        emoji: "🙋‍♀️", 
+                        role: "Frequent Visitor",
+                        dialogue: "I come here often to sketch. That day was unusually crowded, and I noticed someone lingering near the artifact."
+                    }
+                ],
+                criminal: "Techy Tom"
+            },
+            {
+                title: "The Poisoned Punch",
+                setup: "A corporate executive has been poisoned at a company party.",
+                description: "The victim was found unconscious near the punch bowl. Traces of a rare poison were found in their glass.",
+                actors: [
+                    { 
+                        name: "Boss Barbara", 
+                        emoji: "👩‍💼", 
+                        role: "CEO",
+                        dialogue: "I was mingling with the guests all evening. I didn't notice anything unusual until the commotion started."
+                    },
+                    { 
+                        name: "Intern Ian", 
+                        emoji: "👨‍💼", 
+                        role: "New Intern",
+                        dialogue: "I was helping serve drinks. It was my first company party, I was just trying to make a good impression."
+                    },
+                    { 
+                        name: "Chef Charlie", 
+                        emoji: "👨‍🍳", 
+                        role: "Catering Chef",
+                        dialogue: "I prepared all the food and drinks myself. Everything was fine when it left my kitchen."
+                    },
+                    { 
+                        name: "Rival Rachel", 
+                        emoji: "🙎‍♀️", 
+                        role: "Competing Executive",
+                        dialogue: "Sure, we've had our disagreements, but I'd never resort to something like this. I was actually hoping to patch things up at the party."
+                    }
+                ],
+                criminal: "Rival Rachel"
+            },
+            {
+                title: "The Hacked Bank",
+                setup: "Millions have been stolen from the city's largest bank through a cyber attack.",
+                description: "The bank's firewall was breached, and funds were transferred to multiple offshore accounts. The attack happened during a system upgrade.",
+                actors: [
+                    { 
+                        name: "Manager Mike", 
+                        emoji: "👨‍💼", 
+                        role: "Bank Manager",
+                        dialogue: "I authorized the system upgrade. We followed all standard procedures. I can't believe this happened on my watch."
+                    },
+                    { 
+                        name: "Teller Tina", 
+                        emoji: "👩‍💼", 
+                        role: "Bank Teller",
+                        dialogue: "I was working the front desk that day. Everything seemed normal until the systems went down."
+                    },
+                    { 
+                        name: "Cyber Carl", 
+                        emoji: "🧑‍💻", 
+                        role: "Cybersecurity Expert",
+                        dialogue: "I was brought in to oversee the upgrade. We detected the breach immediately, but couldn't stop it in time."
+                    },
+                    { 
+                        name: "Cleaner Cleo", 
+                        emoji: "🧹", 
+                        role: "Cleaning Staff",
+                        dialogue: "I was just doing my rounds as usual. I don't know anything about computers or hacking."
+                    }
+                ],
+                criminal: "Cyber Carl"
+            },
+            {
+                title: "The Vanishing Virtuoso",
+                setup: "A world-renowned violinist has disappeared moments before a crucial performance.",
+                description: "The violinist was last seen entering their dressing room. Their priceless Stradivarius is missing, and a ransom note was found.",
+                actors: [
+                    { 
+                        name: "Manager Mark", 
+                        emoji: "👨‍💼", 
+                        role: "Violinist's Manager",
+                        dialogue: "I was coordinating with the event staff. I last saw them an hour before the performance, they seemed nervous but excited."
+                    },
+                    { 
+                        name: "Rival Rita", 
+                        emoji: "🎻", 
+                        role: "Competing Violinist",
+                        dialogue: "I was warming up backstage. Sure, we're competitors, but I'd never sabotage a performance. Music is sacred."
+                    },
+                    { 
+                        name: "Technician Terry", 
+                        emoji: "🔧", 
+                        role: "Sound Technician",
+                        dialogue: "I was setting up the sound system. I heard some commotion from the dressing room area, but I thought it was just pre-show jitters."
+                    },
+                    { 
+                        name: "Fan Fiona", 
+                        emoji: "🙆‍♀️", 
+                        role: "Obsessive Fan",
+                        dialogue: "I was waiting by the stage door for an autograph. I saw someone leave in a hurry, but I couldn't see who it was."
+                    }
+                ],
+                criminal: "Manager Mark"
+            },
+            {
+                title: "The Sabotaged Spaceship",
+                setup: "A critical component of a spacecraft has been tampered with just before launch.",
+                description: "The sabotage was discovered during the final check. If undetected, it could have led to a catastrophic failure mid-flight.",
+                actors: [
+                    { 
+                        name: "Captain Cora", 
+                        emoji: "👩‍🚀", 
+                        role: "Mission Commander",
+                        dialogue: "I was in the control room overseeing final preparations. Security is tight; I can't imagine how this happened."
+                    },
+                    { 
+                        name: "Engineer Ethan", 
+                        emoji: "👨‍🔧", 
+                        role: "Lead Engineer",
+                        dialogue: "I personally checked that component yesterday. It was in perfect condition. Someone must have accessed it overnight."
+                    },
+                    { 
+                        name: "Scientist Sarah", 
+                        emoji: "👩‍🔬", 
+                        role: "Payload Specialist",
+                        dialogue: "I was calibrating my experiments. I did see someone near the component bay last night, but I assumed it was authorized personnel."
+                    },
+                    { 
+                        name: "Trainee Tim", 
+                        emoji: "👨‍🎓", 
+                        role: "New Recruit",
+                        dialogue: "It was my first day on the job. I was just trying to learn the ropes and stay out of everyone's way."
+                    }
+                ],
+                criminal: "Scientist Sarah"
+            },
+            {
+                title: "The Counterfeit Canvas",
+                setup: "A famous painting at a prestigious gallery has been revealed to be a forgery.",
+                description: "The forgery was discovered during a routine insurance assessment. The real painting is missing, and the forgery is expert-level.",
+                actors: [
+                    { 
+                        name: "Curator Clara", 
+                        emoji: "👩‍🏫", 
+                        role: "Gallery Curator",
+                        dialogue: "I've been in charge of this collection for years. I'm shocked that this could happen under my watch."
+                    },
+                    { 
+                        name: "Artist Alex", 
+                        emoji: "🎨", 
+                        role: "Restoration Artist",
+                        dialogue: "I was working on restoring another piece in the gallery. I have a deep respect for these artworks, I would never participate in forgery."
+                    },
+                    { 
+                        name: "Guard Greg", 
+                        emoji: "💂", 
+                        role: "Security Guard",
+                        dialogue: "My shift was quiet that night. The alarm never went off, and I didn't see anything suspicious on the cameras."
+                    },
+                    { 
+                        name: "Donor Daisy", 
+                        emoji: "🦹‍♀️", 
+                        role: "Wealthy Patron",
+                        dialogue: "I was at the gallery discussing a potential donation. I have a passion for art, but I assure you, my collection is all legitimate."
+                    }
+                ],
+                criminal: "Artist Alex"
+            },
+            {
+                title: "The Silenced Singer",
+                setup: "A popular singer loses their voice right before a major televised performance.",
+                description: "Medical tests show traces of a rare herb known to cause temporary vocal cord paralysis. The herb was found in the singer's tea.",
+                actors: [
+                    { 
+                        name: "Manager Max", 
+                        emoji: "🕴️", 
+                        role: "Singer's Manager",
+                        dialogue: "I was handling last-minute PR. This is a disaster for our image, but I swear I had nothing to do with it."
+                    },
+                    { 
+                        name: "Backup Betty", 
+                        emoji: "🎤", 
+                        role: "Understudy",
+                        dialogue: "I was warming up backstage, just in case. It's terrible what happened, but I'm ready to step in if needed."
+                    },
+                    { 
+                        name: "Tea Tony", 
+                        emoji: "🍵", 
+                        role: "Personal Tea Blender",
+                        dialogue: "I prepared the singer's special tea blend as always. I'm meticulous about my ingredients, this shouldn't have happened!"
+                    },
+                    { 
+                        name: "Rival Roxy", 
+                        emoji: "🎭", 
+                        role: "Competing Singer",
+                        dialogue: "I was preparing for my own performance later this week. Sure, we're rivals, but music isn't about sabotage."
+                    }
+                ],
+                criminal: "Backup Betty"
+            }
+        ];
+
+        let currentCase;
+        let selectedSuspect;
+
+        function startNewCase() {
+            currentCase = cases[Math.floor(Math.random() * cases.length)];
+            document.getElementById('case-title').textContent = currentCase.title;
+            document.getElementById('case-description').textContent = `${currentCase.setup} ${currentCase.description}`;
+            
+            const suspectsContainer = document.getElementById('suspects');
+            suspectsContainer.innerHTML = '';
+            currentCase.actors.forEach(actor => {
+                const suspectElement = document.createElement('div');
+                suspectElement.className = 'bg-gray-700 p-4 rounded-lg text-center';
+                suspectElement.innerHTML = `
+                    <div class="text-4xl mb-2">${actor.emoji}</div>
+                    <div class="font-semibold">${actor.name}</div>
+                    <div class="text-sm text-gray-400 mb-2">${actor.role}</div>
+                    <button class="talk-btn w-full py-1 px-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200">Talk</button>
+                `;
+                const talkBtn = suspectElement.querySelector('.talk-btn');
+                talkBtn.addEventListener('click', () => talkToSuspect(actor));
+                suspectElement.addEventListener('click', (e) => {
+                    if (e.target !== talkBtn) {
+                        selectSuspect(suspectElement, actor.name);
+                    }
+                });
+                suspectsContainer.appendChild(suspectElement);
+            });
+
+            selectedSuspect = null;
+            document.getElementById('message').textContent = '';
+            document.getElementById('dialog').classList.add('hidden');
+        }
+
+        function selectSuspect(element, name) {
+            if (selectedSuspect) {
+                selectedSuspect.classList.remove('bg-blue-600', 'border-blue-400');
+                selectedSuspect.classList.add('bg-gray-700');
+            }
+            selectedSuspect = element;
+            selectedSuspect.classList.remove('bg-gray-700');
+            selectedSuspect.classList.add('bg-blue-600', 'border-blue-400');
+        }
+
+        function talkToSuspect(actor) {
+            const dialogElement = document.getElementById('dialog');
+            const dialogTextElement = document.getElementById('dialog-text');
+            dialogTextElement.textContent = actor.dialogue;
+            dialogElement.classList.remove('hidden');
+        }
+
+        function solveCase() {
+            if (!selectedSuspect) {
+                showMessage('Please select a suspect first!', 'text-red-500');
+                return;
+            }
+
+            const suspectName = selectedSuspect.querySelector('div:nth-child(2)').textContent;
+            if (suspectName === currentCase.criminal) {
+                showMessage('Correct! You solved the case!', 'text-green-500');
+            } else {
+                showMessage(`Wrong! The criminal was ${currentCase.criminal}.`, 'text-red-500');
+            }
+
+            setTimeout(() => {
+                startNewCase();
+            }, 3000);
+        }
+
+        function showMessage(text, colorClass) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.className = `text-center text-lg font-semibold h-8 mb-4 ${colorClass}`;
+        }
+
+        document.getElementById('solve').addEventListener('click', solveCase);
+        document.getElementById('close-dialog').addEventListener('click', () => {
+            document.getElementById('dialog').classList.add('hidden');
+        });
+        startNewCase();
+    </script>
+</body>
+</html>

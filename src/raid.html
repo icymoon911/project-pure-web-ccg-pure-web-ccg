@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Raid POC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes shake {
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(-5px);
+      }
+      75% {
+        transform: translateX(5px);
+      }
+    }
+
+    @keyframes float {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+
+    .float {
+      animation: float 2s infinite ease-in-out;
+    }
+
+    .damage-text {
+      position: absolute;
+      animation: float 1s forwards ease-out;
+      pointer-events: none;
+    }
+
+    .character {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .character:hover {
+      transform: scale(1.1);
+    }
+
+    .selected {
+      border: 3px solid #4CAF50;
+    }
+
+    .health-bar-container {
+      width: 100%;
+      height: 8px;
+      background: #2d3748;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 4px 0;
+      position: relative;
+    }
+
+    .health-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      transition: width 0.3s ease-out;
+      border-radius: 4px;
+    }
+
+    .health-bar.warning {
+      background: linear-gradient(90deg, #eab308, #fde047);
+    }
+
+    .health-bar.danger {
+      background: linear-gradient(90deg, #dc2626, #ef4444);
+    }
+
+    .damage-flash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #fff;
+      opacity: 0;
+      animation: flash 0.3s ease-out;
+    }
+
+    @keyframes flash {
+      0% {
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen">
+  <!-- Character Selection Screen -->
+  <div id="character-select" class="container mx-auto p-4">
+    <h1 class="text-4xl font-bold text-center mb-8 text-yellow-500">Shadow Raid</h1>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <!-- Characters will be inserted here -->
+    </div>
+    <div class="text-center">
+      <button id="start-battle" class="bg-green-600 px-6 py-3 rounded-lg text-white font-bold hover:bg-green-700 transition-colors hidden">Start Battle</button>
+    </div>
+  </div>
+  <!-- Battle Screen -->
+  <div id="battle-screen" class="container mx-auto p-4 hidden">
+    <div class="flex justify-between mb-4">
+      <div id="player-team" class="flex gap-4"></div>
+      <div id="enemy-team" class="flex gap-4"></div>
+    </div>
+    <div id="battle-log" class="bg-gray-800 p-4 rounded-lg mb-4 h-32 overflow-y-auto"></div>
+    <div id="action-buttons" class="grid grid-cols-2 gap-4"></div>
+  </div>
+  <!-- Game Over Screen -->
+  <div id="gameOver" class="fixed inset-0 bg-black bg-opacity-75 hidden flex-col items-center justify-center">
+    <div class="text-4xl text-red-500 mb-4">Game Over!</div>
+    <div class="text-2xl text-yellow-500 mb-4">Score: <span id="finalScore">0</span></div>
+    <button id="restartButton" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">Play Again</button>
+  </div>
+  <script>
+    const characters = [
+      { id: 1, name: "Warrior", emoji: "⚔️", hp: 100, attack: 20, defense: 15, speed: 10, skills: ["Slash", "Shield Block"] },
+      { id: 2, name: "Mage", emoji: "🧙‍♂️", hp: 80, attack: 25, defense: 10, speed: 12, skills: ["Fireball", "Ice Shield"] },
+      { id: 3, name: "Archer", emoji: "🏹", hp: 90, attack: 22, defense: 12, speed: 15, skills: ["Quick Shot", "Poison Arrow"] },
+      { id: 4, name: "Healer", emoji: "💖", hp: 85, attack: 15, defense: 13, speed: 11, skills: ["Heal", "Blessing"] },
+      { id: 5, name: "Tank", emoji: "🛡️", hp: 120, attack: 15, defense: 20, speed: 8, skills: ["Taunt", "Fortify"] },
+      { id: 6, name: "Assassin", emoji: "🗡️", hp: 75, attack: 28, defense: 8, speed: 18, skills: ["Backstab", "Smoke Bomb"] },
+      { id: 7, name: "Paladin", emoji: "✨", hp: 110, attack: 18, defense: 18, speed: 9, skills: ["Holy Strike", "Divine Shield"] },
+      { id: 8, name: "Necromancer", emoji: "💀", hp: 85, attack: 23, defense: 11, speed: 11, skills: ["Death Touch", "Raise Dead"] }
+    ];
+
+    const enemies = [
+      { id: 101, name: "Dark Knight", emoji: "🖤", hp: 100, attack: 20, defense: 15, speed: 10 },
+      { id: 102, name: "Evil Wizard", emoji: "🌑", hp: 80, attack: 25, defense: 10, speed: 12 },
+      { id: 103, name: "Shadow Beast", emoji: "👾", hp: 120, attack: 18, defense: 18, speed: 8 }
+    ];
+
+    let selectedTeam = [];
+    let currentBattle = {
+      playerTeam: [],
+      enemyTeam: [],
+      turnOrder: [],
+      currentTurn: 0
+    };
+
+    function initializeCharacterSelect() {
+      const container = document.querySelector('#character-select .grid');
+      characters.forEach(char => {
+        const charDiv = document.createElement('div');
+        charDiv.className = 'character bg-gray-800 p-4 rounded-lg text-center cursor-pointer hover:bg-gray-700 transition-colors';
+        charDiv.innerHTML = `
+          <div class="text-4xl mb-2">${char.emoji}</div>
+          <div class="font-bold">${char.name}</div>
+          <div class="text-sm text-gray-400">
+            HP: ${char.hp} | ATK: ${char.attack}<br>
+            DEF: ${char.defense} | SPD: ${char.speed}
+          </div>
+        `;
+        charDiv.addEventListener('click', () => selectCharacter(char, charDiv));
+        container.appendChild(charDiv);
+      });
+    }
+
+    function selectCharacter(char, element) {
+      if (element.classList.contains('selected')) {
+        element.classList.remove('selected');
+        selectedTeam = selectedTeam.filter(c => c.id !== char.id);
+      } else if (selectedTeam.length < 3) {
+        element.classList.add('selected');
+        selectedTeam.push(char);
+      }
+      document.getElementById('start-battle').style.display = selectedTeam.length === 3 ? 'inline-block' : 'none';
+    }
+
+    function startBattle() {
+      document.getElementById('character-select').classList.add('hidden');
+      document.getElementById('battle-screen').classList.remove('hidden');
+
+      // Clone selected team and enemies
+      currentBattle.playerTeam = selectedTeam.map(char => ({ ...char, currentHp: char.hp }));
+      currentBattle.enemyTeam = enemies.slice(0, 3).map(enemy => ({ ...enemy, currentHp: enemy.hp }));
+
+      // Calculate turn order based on speed
+      currentBattle.turnOrder = [...currentBattle.playerTeam, ...currentBattle.enemyTeam]
+        .sort((a, b) => b.speed - a.speed);
+
+      updateBattleUI();
+      startTurn();
+    }
+
+    function updateBattleUI() {
+      // Update player team UI
+      const playerTeamDiv = document.getElementById('player-team');
+      playerTeamDiv.innerHTML = currentBattle.playerTeam.map(char => `
+        <div class="bg-gray-800 p-4 rounded-lg text-center ${char.currentHp <= 0 ? 'opacity-50' : ''} min-w-[150px]">
+          <div class="text-4xl mb-2 ${char.currentHp > 0 ? 'float' : ''}">${char.emoji}</div>
+          <div class="font-bold">${char.name}</div>
+          <div class="health-bar-container">
+            <div class="health-bar ${getHealthBarClass(char.currentHp, char.hp)}" 
+                 style="width: ${(char.currentHp / char.hp) * 100}%">
+            </div>
+          </div>
+          <div class="text-sm text-gray-400">
+            ${char.currentHp}/${char.hp}
+          </div>
+        </div>
+      `).join('');
+
+      // Update enemy team UI
+      const enemyTeamDiv = document.getElementById('enemy-team');
+      enemyTeamDiv.innerHTML = currentBattle.enemyTeam.map(enemy => `
+        <div class="bg-gray-800 p-4 rounded-lg text-center ${enemy.currentHp <= 0 ? 'opacity-50' : ''} min-w-[150px]">
+          <div class="text-4xl mb-2 ${enemy.currentHp > 0 ? 'float' : ''}">${enemy.emoji}</div>
+          <div class="font-bold">${enemy.name}</div>
+          <div class="health-bar-container">
+            <div class="health-bar ${getHealthBarClass(enemy.currentHp, enemy.hp)}" 
+                 style="width: ${(enemy.currentHp / enemy.hp) * 100}%">
+            </div>
+          </div>
+          <div class="text-sm text-gray-400">
+            ${enemy.currentHp}/${enemy.hp}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getHealthBarClass(current, max) {
+      const percentage = (current / max) * 100;
+      if (percentage <= 25) return 'danger';
+      if (percentage <= 50) return 'warning';
+      return '';
+    }
+
+    function startTurn() {
+      const currentCharacter = currentBattle.turnOrder[currentBattle.currentTurn];
+
+      if (currentCharacter.currentHp <= 0) {
+        nextTurn();
+        return;
+      }
+
+      if (isPlayerCharacter(currentCharacter)) {
+        showActionButtons(currentCharacter);
+      } else {
+        setTimeout(() => executeEnemyTurn(currentCharacter), 1000);
+      }
+    }
+
+    function showActionButtons(character) {
+      const buttonsDiv = document.getElementById('action-buttons');
+      buttonsDiv.innerHTML = character.skills.map(skill => `
+        <button class="bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          ${skill}
+        </button>
+      `).join('');
+
+      buttonsDiv.querySelectorAll('button').forEach((button, index) => {
+        button.addEventListener('click', () => executePlayerAction(character, character.skills[index]));
+      });
+    }
+
+    function executePlayerAction(character, skill) {
+      const target = currentBattle.enemyTeam.find(enemy => enemy.currentHp > 0);
+      if (!target) return;
+
+      let damage = calculateDamage(character, target, skill);
+
+      // Animate health reduction
+      const startHealth = target.currentHp;
+      const endHealth = Math.max(0, target.currentHp - damage);
+      animateHealth(target, startHealth, endHealth);
+
+      target.currentHp = endHealth;
+      showDamageText(target, damage);
+
+      if (checkBattleEnd()) return;
+      nextTurn();
+    }
+
+    function executeEnemyTurn(enemy) {
+      const target = currentBattle.playerTeam.find(char => char.currentHp > 0);
+      if (!target) return;
+
+      let damage = calculateDamage(enemy, target);
+
+      // Calculate the end health after taking damage
+      const startHealth = target.currentHp;
+      const endHealth = Math.max(0, target.currentHp - damage);
+
+      // Animate health reduction
+      animateHealth(target, startHealth, endHealth);
+
+      target.currentHp = endHealth;
+      showDamageText(target, damage);
+      logBattleAction(enemy, target, "Attack", damage);
+
+      if (checkBattleEnd()) return;
+      nextTurn();
+    }
+
+    function animateHealth(target, start, end) {
+      const duration = 500; // Animation duration in ms
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        const currentHealth = start - ((start - end) * progress);
+        target.currentHp = Math.round(currentHealth);
+        updateBattleUI();
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    function calculateDamage(attacker, defender, skill = "Attack") {
+      let base = attacker.attack - (defender.defense / 2);
+      let multiplier = 1;
+
+      if (skill === "Fireball" || skill === "Backstab") multiplier = 1.5;
+      if (skill === "Quick Shot") multiplier = 1.2;
+      if (skill === "Holy Strike") multiplier = 1.3;
+
+      return Math.max(1, Math.floor(base * multiplier));
+    }
+
+    function showDamageText(target, damage) {
+      const damageText = document.createElement('div');
+      damageText.className = 'damage-text text-red-500 font-bold text-xl';
+      damageText.textContent = `-${damage}`;
+
+      const targetElement = document.querySelector(`div:has(> div.text-4xl:contains("${target.emoji}"))`);
+      if (targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+        damageText.style.left = `${rect.left + Math.random() * 50}px`;
+        damageText.style.top = `${rect.top + Math.random() * 50}px`;
+        document.body.appendChild(damageText);
+
+        const healthBar = targetElement.querySelector('.health-bar-container');
+        const flash = document.createElement('div');
+        flash.className = 'damage-flash';
+        healthBar.appendChild(flash);
+
+        setTimeout(() => {
+          damageText.remove();
+          flash.remove();
+        }, 1000);
+      }
+    }
+
+    function nextTurn() {
+      currentBattle.currentTurn = (currentBattle.currentTurn + 1) % currentBattle.turnOrder.length;
+      startTurn();
+    }
+
+    function checkBattleEnd() {
+      const playerTeamDefeated = currentBattle.playerTeam.every(char => char.currentHp <= 0);
+      const enemyTeamDefeated = currentBattle.enemyTeam.every(enemy => enemy.currentHp <= 0);
+
+      if (playerTeamDefeated || enemyTeamDefeated) {
+        setTimeout(() => {
+          alert(playerTeamDefeated ? "Game Over!" : "Victory!");
+          location.reload();
+        }, 1000);
+        return true;
+      }
+      return false;
+    }
+
+    function isPlayerCharacter(character) {
+      return currentBattle.playerTeam.includes(character);
+    }
+
+    initializeCharacterSelect();
+    document.getElementById('start-battle').addEventListener('click', startBattle);
+  </script>
+</body>
+</html>

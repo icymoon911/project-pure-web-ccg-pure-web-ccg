@@ -1,0 +1,158 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<body class="bg-zinc-950"></body>
+<main class="bg-zinc-800 text-zinc-400 p-8 min-h-screen">
+  <h1 class="text-orange-400 text-xl">Three Match Game :: <span class="text-2xlg text-emerald-200"></span></h1>
+  <template id="frag">
+    <figure class="
+        fixed
+        top-[5rem]
+        left-[2rem]
+        w-[6rem]
+        h-[6rem]
+        bg-[url(../sprites/potter3m.png)]
+        bg-[length:660%]
+        rounded-xl
+        transition-all
+        duration-1000
+        hover:opacity-30
+        hover:duration-200
+      ">
+      <span class="hidden text-emerald-200 text-4xl bg-black/40 p-2 m-2"></span>
+    </figure>
+  </template>
+  <img src="../sprites/potter3m.png" alt="" class="w-96 fixed right-0 top-0 opacity-35" />
+</main>
+<script type="module">
+  import { fragment, delay } from "./old-bird-soft.js";
+
+  let score = 0;
+
+  const rnd = (range) => (Math.random() * range) | 0;
+
+  const spriteSheet = [4.5, 23.5, 62, 81, 100]
+    .map((horizontal) =>
+      [7, 17, 27, 36.4, 46, 56, 65.5, 75.2, 85].map(
+        (vertical) => `${horizontal}% ${vertical}%`,
+      ),
+    )
+    .flat();
+
+  const fragFactory = (id, spriteIndex, x = 0, y = 0) => {
+    const actor = fragment("#frag", "body", id, "figure");
+    actor.style.backgroundPosition = spriteSheet[spriteIndex];
+    actor.style.top = `${y}rem`;
+    actor.style.left = `${x}rem`;
+    return actor;
+  };
+
+  const rollTag = () => rnd(3) + 12;
+
+  const state = Array(6 * 8)
+    .fill(0)
+    .map(rollTag);
+
+  const randomFrag = (tag, index) => fragFactory("frg_" + index, tag, (index % 6) * 6.4 + 2, -20);
+
+  const makeFrag = (tag, index) => {
+    /** @type {HTMLElement} */
+    const frg = randomFrag(tag, index);
+    frg.onclick = async (e) => {
+      frg.style.zIndex = 100;
+      delay(10);
+      e.target.style.top = "100vh";
+      state[index] = 0;
+    };
+    const log = (info) => (frg.children[0].innerText = info);
+    log(tag);
+    setTimeout(() => {
+      frg.style.top = `${((index / 6) | 0) * 6.4 + 5}rem`;
+    }, rnd(3000));
+    return { index, frg, tag, log };
+  };
+
+  const view = state.map(makeFrag);
+
+  const maxX = 6;
+  const maxY = 8;
+
+  const countMatches = (
+    line,
+    start = 0,
+    length = line.length,
+    step = 1
+  ) => {
+    let fo = { nu: -1, lst: [] }
+    let res = [];
+    for (let i = start; i < length; i += step) {
+      if (fo.nu !== line[i]) {
+        if (fo.lst.length > 2) res.push(fo);
+        fo = { nu: line[i], lst: [i] };
+        continue;
+      }
+      fo.lst.push(i);
+    }
+    if (fo.lst.length > 2) res.push(fo);
+    return res;
+  };  
+
+  /** @type {(start:number, end:number) => number[]} */
+  const range = (start, end) =>
+    Array(end - start)
+      .fill()
+      .map((_, idx) => idx + start);
+
+  const gameLoop = () => {
+    let pattern = [];
+    const refill = () => setTimeout(() => {
+      view
+        .map(({ frg: oldFrg }, idx) => {
+          if (!fIndex.includes(idx)) return;
+          oldFrg.remove();
+          const tag = rollTag();
+          const sprite = makeFrag(tag, idx);
+          view[idx] = sprite;
+          const {frg} = sprite;
+          state[idx] = tag;
+          setTimeout(() => {
+            frg.display = 'block'
+            frg.style.top = `${((idx / 6) | 0) * 6.4 + 5}rem`;
+          }, rnd(1000));
+        })
+    }, 2000);
+
+    // horizontal find
+    range(0, maxX).forEach((row) => {
+      const found = countMatches(state, row * maxX, row * maxX + maxX, 1)
+      if (found.length) pattern.push(found);
+    });
+
+    //  vertical find
+    range(0, maxY).forEach((column) => {
+      const found = countMatches(state, column, (maxY * maxX), maxX)
+      if (found.length) pattern.push(found);
+    });
+
+    const fIndex = pattern.flat().map(({ lst }) => lst).flat();
+
+    state.forEach((nu, idx) => view[idx].log(
+      fIndex.includes(idx) ? `(${nu})` : nu
+    ));
+
+    setTimeout(() => {
+      view
+        .filter((_, idx) => fIndex.includes(idx))
+        .map(({ frg }) => setTimeout(() => {
+          frg.style.top = '100rem';
+          document.querySelector('h1 span').innerText = score += 100;
+        }, rnd(1000))
+        )
+      refill();
+      setTimeout(gameLoop, 1100);
+    }, 4000);
+  }
+
+  gameLoop();
+
+  globalThis.state = state;
+  globalThis.view = view;
+</script>

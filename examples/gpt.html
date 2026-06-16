@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Reactive JS State Handling Library</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-500">
+
+<!-- Template Definition -->
+<template id="user-template">
+  <div class="user-card bg-zinc-400 p-8 outline-dashed outline-zinc-600 rounded-2xl -outline-offset-8">
+    <h2 data-bind="name"></h2>
+    <p>Age: <span data-bind="age"></span></p>
+  </div>
+</template>
+
+<!-- Container for Rendered Views -->
+<div id="app" class="grid gap-2 p-8"></div>
+
+<script>
+  // Reactive State Handling Library
+  function createReactiveState(initialState) {
+    const handlers = {};
+    const proxy = new Proxy(initialState, {
+      set(target, property, value) {
+        target[property] = value;
+        if (handlers[property]) {
+          handlers[property].forEach(handler => handler(value));
+        }
+        return true;
+      }
+    });
+
+    proxy.subscribe = (property, handler) => {
+      if (!handlers[property]) {
+        handlers[property] = [];
+      }
+      handlers[property].push(handler);
+    };
+
+    return proxy;
+  }
+
+  // Function to Bind State to DOM Elements
+  function bindStateToElement(state, element) {
+    const bindings = element.querySelectorAll('[data-bind]');
+    bindings.forEach(el => {
+      const prop = el.getAttribute('data-bind');
+      el.textContent = state[prop];
+      state.subscribe(prop, value => {
+        el.textContent = value;
+      });
+    });
+  }
+
+  // Function to Render View from Template
+  function renderView(templateId, containerId, state) {
+    const template = document.getElementById(templateId);
+    const clone = template.content.cloneNode(true);
+    bindStateToElement(state, clone);
+    document.getElementById(containerId).appendChild(clone);
+  }
+
+  // Usage Example
+  document.addEventListener('DOMContentLoaded', () => {
+    const userState = createReactiveState({ name: 'Alice', age: 25 });
+    const userState2 = createReactiveState({ name: 'Gandalf', age: 18 });
+    
+    renderView('user-template', 'app', userState);
+    renderView('user-template', 'app', userState2);
+
+    console.log(userState);
+    
+    // Simulate state changes
+    setTimeout(() => {
+      userState.name = 'Bob';
+      userState.age = 30;
+    }, 2000);
+
+    setInterval(() => {
+      userState2.age = Math.random() * 800 | 0 + 100;
+    }, 20);
+
+    globalThis.ss = userState2;
+  });
+</script>
+
+</body>
+</html>

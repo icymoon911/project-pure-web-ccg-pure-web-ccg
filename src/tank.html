@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hex Tank Battle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hex-grid {
+            clip-path: polygon(75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%, 25% 0);
+        }
+
+        .tank {
+            transition: transform 0.3s ease-out;
+        }
+
+        .projectile {
+            transition: all 0.3s linear;
+        }
+
+        @keyframes explosion {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .explosion {
+            animation: explosion 0.5s ease-out forwards;
+        }
+
+        .notification {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Game UI -->
+    <div class="container mx-auto p-4">
+        <!-- Status Bar -->
+        <div class="flex justify-between mb-4">
+            <div class="text-xl">
+                Player HP: <span id="player-hp" class="text-green-500">100
+            </div>
+            <div class="text-xl">
+                Score: <span id="score" class="text-yellow-500">0
+            </div>
+            <div class="text-xl">
+                Wave: <span id="wave" class="text-blue-500">1
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="relative w-full h-[600px] bg-gray-800 rounded-lg overflow-hidden">
+            <svg id="game-board" class="w-full h-full">
+                <!-- Hex grid will be generated here -->
+            </svg>
+        </div>
+
+        <!-- Controls -->
+        <div class="mt-4 flex justify-center gap-4">
+            <button onclick="rotateTank(-1)" class="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700">
+                ⟲ Rotate Left
+            </button>
+            <button onclick="fireTank()" class="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700">
+                🔥 Fire
+            </button>
+            <button onclick="rotateTank(1)" class="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700">
+                ⟳ Rotate Right
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg text-center">
+            <h2 class="text-3xl mb-4">Game Over!</h2>
+            <p class="text-xl mb-4">Final Score: <span id="final-score">0</p>
+            <button onclick="restartGame()" class="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            playerHP: 100,
+            score: 0,
+            wave: 1,
+            playerRotation: 0,
+            enemies: [],
+            projectiles: [],
+            gameOver: false
+        };
+
+        // Constants
+        const BOARD_SIZE = 10;
+        const HEX_SIZE = 50;
+        const TANK_COLORS = {
+            player: '#4CAF50',
+            enemy: '#F44336'
+        };
+
+        // Hex Grid Generation
+        function generateHexGrid() {
+            const svg = document.getElementById('game-board');
+            const width = svg.clientWidth;
+            const height = svg.clientHeight;
+
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const x = col * (HEX_SIZE * 1.5);
+                    const y = row * (HEX_SIZE * Math.sqrt(3)) + (col % 2 ? HEX_SIZE * Math.sqrt(3) / 2 : 0);
+
+                    const hex = createHexagon(x, y);
+                    svg.appendChild(hex);
+                }
+            }
+        }
+
+        function createHexagon(x, y) {
+            const hex = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const points = [];
+            
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * 60) * Math.PI / 180;
+                const px = x + HEX_SIZE * Math.cos(angle);
+                const py = y + HEX_SIZE * Math.sin(angle);
+                points.push(`${px},${py}`);
+            }
+
+            hex.setAttribute('points', points.join(' '));
+            hex.setAttribute('fill', '#2D3748');
+            hex.setAttribute('stroke', '#4A5568');
+            hex.setAttribute('stroke-width', '2');
+            
+            return hex;
+        }
+
+        // Tank Creation
+        function createTank(x, y, color, isPlayer = false) {
+            const tank = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            tank.classList.add('tank');
+
+            // Tank body
+            const body = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            body.setAttribute('cx', x);
+            body.setAttribute('cy', y);
+            body.setAttribute('r', HEX_SIZE / 2);
+            body.setAttribute('fill', color);
+
+            // Tank cannon
+            const cannon = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            cannon.setAttribute('x', x);
+            cannon.setAttribute('y', y - 2);
+            cannon.setAttribute('width', HEX_SIZE / 2);
+            cannon.setAttribute('height', 4);
+            cannon.setAttribute('fill', '#000');
+
+            tank.appendChild(body);
+            tank.appendChild(cannon);
+
+            if (isPlayer) {
+                tank.setAttribute('transform', `rotate(${gameState.playerRotation} ${x} ${y})`);
+            }
+
+            return tank;
+        }
+
+        // Game Logic
+        function rotateTank(direction) {
+            if (gameState.gameOver) return;
+
+            gameState.playerRotation += direction * 45;
+            const tank = document.querySelector('.tank');
+            const [x, y] = getTankPosition(tank);
+            tank.setAttribute('transform', `rotate(${gameState.playerRotation} ${x} ${y})`);
+        }
+
+        function fireTank() {
+            if (gameState.gameOver) return;
+
+            const tank = document.querySelector('.tank');
+            const [x, y] = getTankPosition(tank);
+            const angle = gameState.playerRotation * Math.PI / 180;
+
+            createProjectile(x, y, angle);
+        }
+
+        function createProjectile(x, y, angle) {
+            const projectile = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            projectile.setAttribute('cx', x);
+            projectile.setAttribute('cy', y);
+            projectile.setAttribute('r', 4);
+            projectile.setAttribute('fill', '#FFF');
+            projectile.classList.add('projectile');
+
+            document.getElementById('game-board').appendChild(projectile);
+
+            const speed = 10;
+            const dx = Math.cos(angle) * speed;
+            const dy = Math.sin(angle) * speed;
+
+            gameState.projectiles.push({
+                element: projectile,
+                x, y, dx, dy
+            });
+        }
+
+        function updateProjectiles() {
+            gameState.projectiles.forEach((projectile, index) => {
+                projectile.x += projectile.dx;
+                projectile.y += projectile.dy;
+
+                // Check bounds
+                if (projectile.x < 0 || projectile.x > window.innerWidth ||
+                    projectile.y < 0 || projectile.y > window.innerHeight) {
+                    projectile.element.remove();
+                    gameState.projectiles.splice(index, 1);
+                    return;
+                }
+
+                projectile.element.setAttribute('cx', projectile.x);
+                projectile.element.setAttribute('cy', projectile.y);
+
+                // Check collisions with enemies
+                checkProjectileCollisions(projectile, index);
+            });
+        }
+
+        function checkProjectileCollisions(projectile, projectileIndex) {
+            gameState.enemies.forEach((enemy, enemyIndex) => {
+                const dx = projectile.x - enemy.x;
+                const dy = projectile.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < HEX_SIZE) {
+                    createExplosion(enemy.x, enemy.y);
+                    enemy.element.remove();
+                    gameState.enemies.splice(enemyIndex, 1);
+                    projectile.element.remove();
+                    gameState.projectiles.splice(projectileIndex, 1);
+                    
+                    gameState.score += 100;
+                    updateScore();
+
+                    if (gameState.enemies.length === 0) {
+                        startNewWave();
+                    }
+                }
+            });
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            explosion.setAttribute('cx', x);
+            explosion.setAttribute('cy', y);
+            explosion.setAttribute('r', HEX_SIZE / 2);
+            explosion.setAttribute('fill', '#FFA500');
+            explosion.classList.add('explosion');
+
+            document.getElementById('game-board').appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function spawnEnemies() {
+            const count = gameState.wave + 2;
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * (window.innerWidth - HEX_SIZE * 2) + HEX_SIZE;
+                const y = Math.random() * (window.innerHeight - HEX_SIZE * 2) + HEX_SIZE;
+
+                const enemy = createTank(x, y, TANK_COLORS.enemy);
+                document.getElementById('game-board').appendChild(enemy);
+
+                gameState.enemies.push({
+                    element: enemy,
+                    x, y,
+                    dx: Math.random() * 4 - 2,
+                    dy: Math.random() * 4 - 2
+                });
+            }
+        }
+
+        function updateEnemies() {
+            gameState.enemies.forEach(enemy => {
+                enemy.x += enemy.dx;
+                enemy.y += enemy.dy;
+
+                // Bounce off walls
+                if (enemy.x < HEX_SIZE || enemy.x > window.innerWidth - HEX_SIZE) {
+                    enemy.dx *= -1;
+                }
+                if (enemy.y < HEX_SIZE || enemy.y > window.innerHeight - HEX_SIZE) {
+                    enemy.dy *= -1;
+                }
+
+                enemy.element.setAttribute('transform', `translate(${enemy.dx} ${enemy.dy})`);
+
+                // Check collision with player
+                const playerTank = document.querySelector('.tank');
+                const [playerX, playerY] = getTankPosition(playerTank);
+                const dx = enemy.x - playerX;
+                const dy = enemy.y - playerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < HEX_SIZE) {
+                    takeDamage(10);
+                }
+            });
+        }
+
+        function takeDamage(amount) {
+            gameState.playerHP -= amount;
+            document.getElementById('player-hp').textContent = gameState.playerHP;
+
+            if (gameState.playerHP <= 0) {
+                endGame();
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = gameState.score;
+        }
+
+        function startNewWave() {
+            gameState.wave++;
+            document.getElementById('wave').textContent = gameState.wave;
+            spawnEnemies();
+        }
+
+        function endGame() {
+            gameState.gameOver = true;
+            document.getElementById('game-over').classList.remove('hidden');
+            document.getElementById('final-score').textContent = gameState.score;
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
+        function getTankPosition(tank) {
+            const transform = tank.getAttribute('transform');
+            if (!transform) return [window.innerWidth / 2, window.innerHeight / 2];
+            
+            const match = transform.match(/translate\(([^)]+)\)/);
+            if (!match) return [window.innerWidth / 2, window.innerHeight / 2];
+            
+            const [x, y] = match[1].split(' ').map(Number);
+            return [x, y];
+        }
+
+        // Game Loop
+        function gameLoop() {
+            if (!gameState.gameOver) {
+                updateProjectiles();
+                updateEnemies();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Initialize Game
+        function initGame() {
+            generateHexGrid();
+            const playerTank = createTank(
+                window.innerWidth / 2,
+                window.innerHeight / 2,
+                TANK_COLORS.player,
+                true
+            );
+            document.getElementById('game-board').appendChild(playerTank);
+            spawnEnemies();
+            gameLoop();
+        }
+
+        // Start game when page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>

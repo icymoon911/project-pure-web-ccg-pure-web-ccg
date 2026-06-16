@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Pure Web CCG</title>
+  <style>
+    html {
+      font-size: 1.8vmin;
+    }
+    body {
+      --background-image: url(https://cdn.midjourney.com/95a99e4f-9c5f-4ea0-8f0b-da17288fc39d/0_2.png);
+      --background-image: url(https://cdn.midjourney.com/2f08df50-4acc-4677-89a9-0b9a8ce04163/0_0.png);
+      --background-image: url(https://cdn.midjourney.com/792d4c77-ce66-48c9-b666-af06b4c5631d/0_2.png);
+      --background-size: 70vh;
+      --background-blend-mode: hard-light;
+      --mix-blend-mode: screen;
+    }
+    main#desk-off {
+        transform-style: preserve-3d;
+        transform:
+          perspective(70vh)
+          rotateX(30deg)
+          rotateY(0deg)
+          rotateZ(0deg)
+          scale(.64)
+          translateZ(75px);
+        pointer-events: none;
+    }
+    .duck-girl {
+       transform: rotateX(-90deg) translateY(-10rem);
+    }
+  </style>
+</head>
+<body class="bg-zinc-800 text-zinc-400 min-h-screen min-w-screen">
+  <template id="slot">
+    <section class="
+      pointer-events-auto
+      w-[11rem] rounded-2xl aspect-[4/6]
+      relative
+      p-4
+      md:outline-2
+      lg:outline-4
+      outline-zinc-700 outline-dashed outline-offset-0
+      hover:outline-sky-600 hover:outline-offset-4  hover:outline-4
+      [&[data-possible]]:outline-emerald-600
+        [&[data-possible]]:outline-offset-4
+        [&[data-possible]]:outline-4
+        [&[data-possible]]:duration-1000
+      transition-all duration-500
+    ">
+      <span id="name" class="select-none">Deck</span>
+    </section>
+  </template>
+  <template id="card">
+    <section class="
+      card-front
+      w-[11rem] rounded-2xl aspect-[4/6] lg
+      px-1 py-3 bg-neutral-800 absolute top-0 left-0
+      transition-all duration-500
+      --pointer-events-none
+
+      bg-[url(sprites/many-card-002.jpeg)]
+      --bg-[url(sprites/elf-cardset.jpg)]
+      --bg-[url(sprites/cat-cardset.jpg)]
+      --bg-[url(sprites/gremlins.png)]
+      bg-[length:570%]
+      bg-[position:4%_4%] 4 28 50 74 96, 4 36 69 103
+      bg-no-repeat
+      transform-style:preserve-3d 
+      --hover:[transform:rotateY(180deg)]
+    ">
+      <span id="work"
+        class="select-none absolute bg-black/40 text-orange-200 text-[1.5rem] text-center right-4 rounded">Guard</span>
+      <span id="power"
+        class="select-none absolute bg-black/40 text-orange-200 text-[2rem] text-center rounded-xl w-[3rem]">9</span>
+      <span id="name"
+        class="select-none absolute bottom-0 -left-[.2rem] w-full bg-black text-zinc-400 px-2 py-2 rounded-xl self-end text-center">Card</span>
+    </section>
+  </template>
+  <template id="empty">
+    <section></section>
+  </template>
+  <template id="floor">
+    <section class="
+      absolute
+      top-[0rem]
+      left-[38rem]
+      h-[30rem]
+      w-[30rem]
+      bg-[position:100%_50%]
+      bg-[url(sprites/floor-galaxy.png)]
+      bg-[length:280%]
+      bg-no-repeat
+      transform-style:preserve-3d
+      pointer-events-auto
+    "
+    ></section>
+  </template>
+  <template id="test-dialog">
+    <section>
+      <dialog class="
+      top-0 left-0
+    absolute z-[10000] bg-neutral-900 text-zinc-400 p-8 text-3xl
+    rounded-2xl min-w-[40rem] min-h-[20rem] mt-[20rem]
+    grid outline-dashed outline-gray-600 -outline-offset-8
+  ">
+        <p>Try this really interesting pure web development with this complec game.</p>
+        <p>So this is need to be work as perfect modal window</p>
+        <button class="bg-sky-900 p-8 rounded-3xl w-min h-min self-end justify-self-end" onclick="document.querySelector('dialog').close()">close</button>
+      </dialog>
+    </section>
+  </template>
+  <code class="bg-emerald-900/70 text-black p-6 grid place-items-center w-8 text-2xl select-none absolute top-0 left-0 z-[20000]"></code>
+  <code id="show-set" class="bg-emerald-900/70 text-black p-6 grid place-items-center w-8 text-2xl select-none absolute top-0 right-0 z-[20000]"></code>
+  <a href="src/markdown.html" class="bg-emerald-900/70 text-black p-6 grid place-items-center w-8 text-2xl select-none absolute top-[3.5rem] right-0 z-[20000]"></a>
+  <pre id="monitor" class="select-none pointer-events-none z-[10000] p-4 absolute text-emerald-300 text-[1rem]"></pre>
+  <main id="desk" class="
+    relative
+    max-h-screen
+    aspect-[4/4]
+    mx-auto
+    --transition-all
+    --duration-500
+    transform-style:preserve-3d
+  ">
+    <!-- board elements -->
+    
+    <section class="
+      absolute
+      top-[2rem]
+      left[-20rem]
+      min-h-[10rem]
+      min-w-[10rem]
+      outline
+      outline-[1rem]
+      outline-emerald-900
+      rounded-full
+    "></section>
+
+    <section class="
+      duck-girl
+      absolute
+      top-[0rem]
+      left-[-5rem]
+      h-[20rem]
+      w-[20rem]
+      bg-[url(sprites/duck-girl.png)]
+      bg-[length:100%]
+      bg-no-repeat
+      transform-style:preserve-3d
+      pointer-events-auto
+      --outline
+      --outline-1
+      --outline-sky-500
+    "
+    ></section>
+
+    <iframe 
+      width="100%" 
+      class="absolute top-0 left-0  h-[45rem] bg-black" 
+      src="src/3match.html" 
+      frameborder="0" 
+      scrolling="no"
+      style="
+        pointer-events: none;
+        transform-style: preserve-3d;
+        transform:
+          translateX(60rem)
+          translateY(-30rem)
+          translateZ(25rem)
+
+          rotateY(0deg)
+          rotateX(90deg)
+          rotateZ(180deg)
+      "
+    ></iframe>
+
+    <iframe  
+      class="absolute top-0 left-0 w-[70rem]  h-[70rem] bg-black outline outline-4 outline-black" 
+      src="src/markdown.html" 
+      frameborder="0" 
+      style="
+        transform-style: preserve-3d;
+        transform:
+        translateX(-10rem)
+          translateY(-65rem)
+          translateZ(25rem)
+
+          rotateY(0deg) rotateX(278deg) rotateZ(359deg)
+      "
+    ></iframe>
+
+
+    <section id="table" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="incoming" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="player" class="grid gap-4 grid-cols-4 p-4"></section>
+  </main>
+  <teaser-animation></teaser-animation>
+  <section class="grid grid-cols-2 min-w-[40rem] gap-4 fixed top-4 left-[4rem]">
+    <input type="range" class="accent-emerald-600 appearance-none bg-zinc-700/50" min="-180" max="180" id="rotateX" value="0" /><label></label>
+    <input type="range" class="accent-emerald-600 appearance-none bg-zinc-700/50" min="0" max="70" id="rotateY" value="30" /><label></label>
+    <input type="range" class="accent-emerald-600 appearance-none bg-zinc-700/50" min="-30" max="10" id="rotateZ" value="0" /><label></label>
+  </section>
+  <iframe 
+    src="src/markdown.html" 
+    wid-th="100%" 
+    class="
+      hidden
+      absolute
+      top-0
+      right-0
+      min-w-[42vw]
+      min-h-[100vh]
+      overflow-scroll
+      bg-black
+      outline
+      outline-1
+      outline-zinc-700
+      --mix-blend-screen
+    " 
+    src="$2" 
+    frameborder="0" 
+    scrolling="no">
+  </iframe>
+</body>
+  <script type="module" src="src/pure-ccg-view.js"></script>
+</html>

@@ -1,0 +1,58 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<body class="bg-zinc-950"></body>
+<template id="card">
+  <figure class="
+    fixed top-[30rem] left-[30rem]
+    w-[7rem] h-[8.5rem]
+    bg-slate-700
+    bg-[url(../sprites/potter3m.png)]
+    bg-[length:570%]
+    rounded-xl
+    --pointer-events-none
+    border-[.2rem]
+    border-black
+  "></figure>
+  <a href="https://github.com/mundimark/awesome-markdown-editors?tab=readme-ov-file">markdown editors collection</a>
+</template>
+<script type="module">
+// Animation test over markdown editor
+
+  const spriteSheet =
+  [4, 26, 50, 74, 96].map((horizontal) =>
+    [4, 36, 69, 103].map((vertical) => `${horizontal}% ${vertical}%`)
+  ).flat();
+
+  import { fragment } from './old-bird-soft.js';
+
+  const anim = [
+    { transform: "translateX(%0)" },
+    { transform: "rotate(0) translate3D(-50%, -50%, 0)" },
+    // { backgroundColor: "#431236", offset: 0.3 },
+    { transform: "rotate(360deg) translate3D(-50%, -50%, 0)" },
+    { transform: "translateX(%80)" },
+  ]
+  const timeline = {
+    duration: 2000,
+    iterations: Infinity
+  }
+
+  const rnd = range => Math.random() * range | 0;
+
+  globalThis.startStop = () => {
+    // if (an2.playState == 'running') {
+    const actor = fragment('#card', 'body', 'card-02', 'figure')
+    actor.style.top=`${rnd(55)}rem`;
+    actor.style.left=`${rnd(70)}rem`;
+    actor.style.transform=`scale(${Math.random()})`;
+    actor.style.backgroundPosition = spriteSheet[rnd(spriteSheet.length)];
+    // actor.addEventListener("click", () => {actor.pause()});
+    // style don't work any more.
+    actor.animate(anim, timeline);
+    actor.playbackRate = rnd(5000);
+    // actor.play();
+  }
+</script>
+
+<section class="fixed bottom-16 left-16 --hidden">
+  <button class="p-2 bg-sky-600 text-sky-200 m-2 rounded-full" onclick="globalThis.startStop()">card +</button>
+</section>

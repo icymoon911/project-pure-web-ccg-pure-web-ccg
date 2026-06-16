@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIM Motion Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen font-mono p-4">
+    <div class="max-w-2xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-green-500 mb-2">VIM Motion Master</h1>
+            <div class="flex justify-center space-x-4">
+                <div>Score: <span id="score" class="text-yellow-500">0</div>
+                <div>Time: <span id="timer" class="text-blue-500">0s</div>
+                <div>Level: <span id="level" class="text-purple-500">1</div>
+            </div>
+        </header>
+
+        <div class="bg-gray-800 p-4 rounded-lg mb-4">
+            <div class="text-sm text-gray-400 mb-2">Task:</div>
+            <div id="task" class="text-yellow-400 text-lg mb-4"></div>
+            <div id="editor" class="font-mono bg-gray-950 p-4 rounded relative overflow-hidden">
+                <div id="cursor" class="absolute w-2 h-5 bg-green-500 animate-pulse"></div>
+                <div id="content" class="whitespace-pre"></div>
+            </div>
+        </div>
+
+        <div id="commands" class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-green-500 mb-2">Current Command:</h2>
+                <div id="current-command" class="text-xl"></div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-blue-500 mb-2">Next Command:</h2>
+                <div id="next-command" class="text-xl text-gray-500"></div>
+            </div>
+        </div>
+
+        <div id="message" class="text-center text-lg mb-4 h-8"></div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <button id="start" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors">
+                Start Game
+            </button>
+            <button id="skip" class="bg-yellow-600 text-white p-2 rounded hover:bg-yellow-700 transition-colors" disabled>
+                Skip Task
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const challenges = [
+            { command: 'h', desc: 'Move left', steps: 3 },
+            { command: 'l', desc: 'Move right', steps: 3 },
+            { command: 'j', desc: 'Move down', steps: 2 },
+            { command: 'k', desc: 'Move up', steps: 2 },
+            { command: 'w', desc: 'Move to next word start', steps: 2 },
+            { command: 'b', desc: 'Move to previous word start', steps: 2 },
+            { command: 'e', desc: 'Move to word end', steps: 2 },
+            { command: '0', desc: 'Move to line start', steps: 1 },
+            { command: '$', desc: 'Move to line end', steps: 1 },
+            { command: 'gg', desc: 'Move to file start', steps: 1 },
+            { command: 'G', desc: 'Move to file end', steps: 1 }
+        ];
+
+        const sampleText = `The quick brown fox
+jumps over the lazy dog
+while the cat sleeps
+on the windowsill
+watching birds fly by
+in the morning sun
+creating shadows
+on the garden wall`;
+
+        let currentPosition = { x: 0, y: 0 };
+        let targetPosition = { x: 0, y: 0 };
+        let score = 0;
+        let level = 1;
+        let timer = 0;
+        let gameInterval;
+        let currentChallenge = null;
+        let isGameActive = false;
+
+        const editor = document.getElementById('editor');
+        const content = document.getElementById('content');
+        const cursor = document.getElementById('cursor');
+        const taskElement = document.getElementById('task');
+        const currentCommandElement = document.getElementById('current-command');
+        const nextCommandElement = document.getElementById('next-command');
+        const messageElement = document.getElementById('message');
+
+        function initGame() {
+            content.textContent = sampleText;
+            updateCursorPosition();
+            score = 0;
+            level = 1;
+            timer = 0;
+            updateStats();
+            nextChallenge();
+        }
+
+        function updateCursorPosition() {
+            const lines = content.textContent.split('\n');
+            let totalOffset = 0;
+            for (let i = 0; i < currentPosition.y; i++) {
+                totalOffset += lines[i].length + 1;
+            }
+            totalOffset += currentPosition.x;
+
+            const textNode = content.firstChild;
+            const range = document.createRange();
+            range.setStart(textNode, totalOffset);
+            range.collapse(true);
+            const rect = range.getBoundingClientRect();
+            const editorRect = editor.getBoundingClientRect();
+
+            cursor.style.left = `${rect.left - editorRect.left}px`;
+            cursor.style.top = `${rect.top - editorRect.top}px`;
+        }
+
+        function nextChallenge() {
+            const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+            currentChallenge = challenge;
+            
+            // Calculate target position based on challenge
+            targetPosition = calculateTargetPosition(challenge);
+            
+            taskElement.textContent = `Use '${challenge.command}' ${challenge.steps} times - ${challenge.desc}`;
+            currentCommandElement.textContent = challenge.command;
+            nextCommandElement.textContent = challenges[Math.floor(Math.random() * challenges.length)].command;
+        }
+
+        function calculateTargetPosition(challenge) {
+            const lines = content.textContent.split('\n');
+            const pos = { ...currentPosition };
+
+            switch (challenge.command) {
+                case 'h':
+                    pos.x = Math.max(0, pos.x - challenge.steps);
+                    break;
+                case 'l':
+                    pos.x = Math.min(lines[pos.y].length - 1, pos.x + challenge.steps);
+                    break;
+                case 'j':
+                    pos.y = Math.min(lines.length - 1, pos.y + challenge.steps);
+                    break;
+                case 'k':
+                    pos.y = Math.max(0, pos.y - challenge.steps);
+                    break;
+                case 'w':
+                    // Simplified word movement
+                    pos.x = Math.min(lines[pos.y].length - 1, pos.x + (challenge.steps * 5));
+                    break;
+                case 'b':
+                    pos.x = Math.max(0, pos.x - (challenge.steps * 5));
+                    break;
+                case '0':
+                    pos.x = 0;
+                    break;
+                case '$':
+                    pos.x = lines[pos.y].length - 1;
+                    break;
+                case 'gg':
+                    pos.y = 0;
+                    pos.x = 0;
+                    break;
+                case 'G':
+                    pos.y = lines.length - 1;
+                    pos.x = 0;
+                    break;
+            }
+
+            return pos;
+        }
+
+        function handleKeydown(event) {
+            if (!isGameActive) return;
+            
+            if (event.key === currentChallenge.command || 
+                (currentChallenge.command === 'gg' && event.key === 'g') ||
+                (currentChallenge.command === 'G' && event.key === 'G')) {
+                
+                event.preventDefault();
+                
+                // Move cursor based on command
+                const lines = content.textContent.split('\n');
+                switch (currentChallenge.command) {
+                    case 'h':
+                        currentPosition.x = Math.max(0, currentPosition.x - 1);
+                        break;
+                    case 'l':
+                        currentPosition.x = Math.min(lines[currentPosition.y].length - 1, currentPosition.x + 1);
+                        break;
+                    case 'j':
+                        currentPosition.y = Math.min(lines.length - 1, currentPosition.y + 1);
+                        break;
+                    case 'k':
+                        currentPosition.y = Math.max(0, currentPosition.y - 1);
+                        break;
+                    case 'w':
+                        currentPosition.x = Math.min(lines[currentPosition.y].length - 1, currentPosition.x + 5);
+                        break;
+                    case 'b':
+                        currentPosition.x = Math.max(0, currentPosition.x - 5);
+                        break;
+                    case '0':
+                        currentPosition.x = 0;
+                        break;
+                    case '$':
+                        currentPosition.x = lines[currentPosition.y].length - 1;
+                        break;
+                    case 'gg':
+                        currentPosition = { x: 0, y: 0 };
+                        break;
+                    case 'G':
+                        currentPosition = { x: 0, y: lines.length - 1 };
+                        break;
+                }
+
+                updateCursorPosition();
+
+                // Check if target reached
+                if (currentPosition.x === targetPosition.x && currentPosition.y === targetPosition.y) {
+                    score += 10 * level;
+                    showMessage('Great job! +' + (10 * level) + ' points', 'text-green-500');
+                    updateStats();
+                    if (score >= level * 100) {
+                        level++;
+                        showMessage('Level Up!', 'text-purple-500');
+                        updateStats();
+                    }
+                    nextChallenge();
+                }
+            }
+        }
+
+        function showMessage(text, colorClass = 'text-white') {
+            messageElement.textContent = text;
+            messageElement.className = `text-center text-lg mb-4 h-8 ${colorClass}`;
+            setTimeout(() => {
+                messageElement.textContent = '';
+            }, 2000);
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('timer').textContent = timer + 's';
+        }
+
+        document.getElementById('start').addEventListener('click', () => {
+            isGameActive = true;
+            document.getElementById('start').disabled = true;
+            document.getElementById('skip').disabled = false;
+            initGame();
+            gameInterval = setInterval(() => {
+                timer++;
+                updateStats();
+            }, 1000);
+        });
+
+        document.getElementById('skip').addEventListener('click', () => {
+            if (isGameActive) {
+                score = Math.max(0, score - 5);
+                updateStats();
+                nextChallenge();
+                showMessage('Task skipped! -5 points', 'text-yellow-500');
+            }
+        });
+
+        document.addEventListener('keydown', handleKeydown);
+
+        // Initial setup
+        content.textContent = sampleText;
+        updateCursorPosition();
+    </script>
+</body>
+</html>

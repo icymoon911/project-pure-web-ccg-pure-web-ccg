@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Pure Web</title>
+  <style>html {font-size: 1.8vmin;}</style>
+</head>
+<body class="bg-black text-zinc-400 min-h-screen min-w-screen">
+
+  <template id="slot">
+    <section class="
+      w-[11rem] rounded-2xl aspect-[4/6] md:border-2 border lg:border-4 
+      p-4 border-zinc-700 border-dashed relative
+      hover:border-sky-600 hover:border-4
+      transition-all duration-500
+    ">
+      <span id="name" class="select-none">Deck</span>
+    </section>
+  </template>
+
+  <template id="card">
+    <section class="
+      --pointer-events-none
+      w-[11rem] rounded-2xl aspect-[4/6] lg 
+      px-1 py-3 bg-neutral-800 absolute top-0 left-0
+      transition-all duration-500
+      --hover:-translate-x-[1rem]
+      --hover:-translate-y-[1rem]
+      --bg-[url(card-al---bg.png)] 
+      --bg-contain 
+      --bg-center
+      bg-[url(many-card-002.jpeg)]
+      bg-[length:570%] 
+      bg-[position:4%_4%] 4 28 50 74 96, 4 36 69 103
+      bg-no-repeat
+      grid items-start
+    ">
+    <span id="power" class="select-none bg-[#f2d6cd] text-black p-2 rounded-xl w-[2rem]">9</span>
+      <span id="name" class="select-none bg-[#f2d6cd] text-black p-2 rounded-xl self-end">Card</span>
+    </section>
+  </template>
+
+  <template id="empty">
+    <section></section>
+  </template>
+
+  <pre id="monitor" class="select-none pointer-events-none z-[10000] p-4 absolute text-orange-300 text-[1.3rem]"></pre>
+
+  <main id="desk" class="relative max-h-screen aspect-[4/4] mx-auto">
+    <section id="table" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="incoming" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="player" class="grid gap-4 grid-cols-4 p-4"></section>
+  </main>
+  
+</body>
+<script type="module">
+
+import { cardCollection } from "./alien.js"
+
+const verticalSection = [4,36,69,103];
+const spriteSheet = [4,26,50,74,96].map((horizontal) => 
+ verticalSection.map((vertical) => `${horizontal}% ${vertical}%`)
+).flat();
+
+const monitorView = document.getElementById('monitor')
+const monitor = state => {
+  if (!monitorView) return;
+  try {
+    monitorView.innerText = JSON.stringify(state, null, 2);
+  } catch (error) {
+    console.error(console.error());
+    monitorView.innerText = error;
+  }
+};
+
+/**  @type {<T>(state:T) => T} */
+const signal = (state) => {
+  monitor(state);
+  return new Proxy({count:0}, {
+   get: (obj, prop) => obj[prop],
+   set: (obj, prop, value) => {
+     obj[prop] = value;
+     monitor(obj);
+     return true;
+  }});
+}
+
+const state = signal(/** @type {{count:number}} */{count: 0});
+
+/** @type {(templateId:string, parent:string, id?:string) => HTMLElement} */
+const fragment = (templateId, parent, id) => {
+  const frag = document.querySelector(templateId).content.cloneNode(true);
+  /** @type HTMLElement */
+  const result = frag.querySelector('section');
+  if(id) {result.id = id;}
+  document.querySelector(parent).appendChild(frag);
+  return result;
+};
+
+/** @type {(
+ *   templateId:string, 
+ *   parent:string, 
+ *   id:string, 
+ *   name:string, 
+ *   topRem:number, 
+ *   leftRem:number
+ * ) => {
+ *  slot:HTMLElement, 
+ *  moveCardTo:(card:Card) => void
+ * }} */
+const slot = (parent, id, name, topRem, leftRem) => {
+  const slot = fragment('#slot', parent, id);
+  slot.querySelector('#name').innerText = name;
+  const moveCardTo = (card) => {
+    card.style.top = `${topRem}rem`; 
+    card.style.left = `${leftRem}rem`; 
+  } 
+  slot.onclick = () => {
+    if (state.focus) {
+      moveCardTo(state.focus);
+      state.count += 1;
+    }
+  }
+  return {slot, moveCardTo};
+};
+
+fragment('#empty', '#table');
+const slotDeck = slot('#table', 'slot-deck', 'Deck', 1, 15.2);
+const slotDrop = slot('#table', 'slot-drop', 'Drop', 1, 15.2 + 13);
+
+const slotLine1 = slot('#incoming', 'slot-line-1', 'Line 1', 19, 1);
+const slotLine2 = slot('#incoming', 'slot-line-1', 'Line 2', 19, 15.2);
+const slotLine3 = slot('#incoming', 'slot-line-1', 'Line 3', 19, 15.2 + 13);
+const slotLine4 = slot('#incoming', 'slot-line-1', 'Line 4', 19, 15.2 + 26);
+
+const slotHero = slot('#player', 'slot-hero','Hero', 19 + 19, 1);
+const slotAction1 = slot('#player', 'slot-Action1', 'Action1', 19 + 19, 15.2);
+const slotAction2 = slot('#player', 'slot-Action1', 'Action1', 19 + 19, 15.2 + 13);
+const slotStore1 = slot('#player', 'slot-Store1', 'Store1', 19 + 19, 15.2 + 26);
+
+const pick = arr => arr[Math.random() * arr.length | 0];
+
+const cardList = cardCollection
+  .map(({name:id, power}) => { 
+    const card = fragment('#card', "#desk", id);
+    slotDeck.moveCardTo(card);
+    card.style.backgroundPosition = pick(spriteSheet);
+    card.querySelector('#name').innerHTML = id;
+    card.querySelector('#power').innerHTML = power;
+    card.onmouseenter = () => {
+      state.focus = card;
+      state.cardId = card.id;
+      state.focus.style.zIndex = ++ state.count;
+    }
+    card.onclick = () => {
+      const draw = pick(cardList.filter(({style}) =>
+        state.focus.style.top != style.top &&
+        state.focus.style.left != style.left
+      ));
+      if (!draw) return;
+      state.draw = draw.id;
+      draw.style.zIndex = ++ state.count;
+      draw.style.top = state.focus.style.top;
+      draw.style.left = state.focus.style.left;
+    }
+    return card;
+  });
+
+  state.count = cardList.length;
+  state.focus = cardList.at(-1);
+  // state.collection = cardCollection;
+
+/** @type {(ms:number) => Promise<void>} */
+const delay = (ms) => new Promise((release) => setTimeout(release, ms));
+
+const dealCards = async () => {
+  await delay(200);
+  slotLine4.moveCardTo(cardList.at(-1))
+  await delay(200);
+  slotLine3.moveCardTo(cardList.at(-2))
+  await delay(200);
+  slotLine2.moveCardTo(cardList.at(-3))
+  await delay(200);
+  slotLine1.moveCardTo(cardList.at(-4))
+}
+
+dealCards();
+
+// https://www.lambdatest.com/blog/best-javascript-frameworks/
+
+</script>
+</html>

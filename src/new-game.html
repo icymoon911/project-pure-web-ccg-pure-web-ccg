@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Political Puzzle: Card Chaos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-100 flex justify-center items-center min-h-screen font-sans p-4">
+    <div id="game-container" class="w-full max-w-4xl bg-white border-2 border-gray-800 rounded-xl p-6 shadow-2xl">
+        <h1 class="text-3xl font-bold text-center mb-6 text-blue-800">Political Puzzle: Card Chaos</h1>
+        <div id="game-area" class="space-y-6">
+            <div id="scenario" class="text-xl text-center font-semibold mb-4 h-20"></div>
+            <div id="cards" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+            <div class="flex justify-between items-center">
+                <div id="score" class="text-lg font-semibold">Score: <span id="score-value">0</div>
+                <div id="round" class="text-lg font-semibold">Round: <span id="round-value">1/5</div>
+            </div>
+            <div id="message" class="text-center text-lg font-semibold h-8 mb-4"></div>
+            <button id="submit" class="w-full py-3 text-lg bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 font-bold">Submit Decision</button>
+        </div>
+    </div>
+
+    <script>
+        const scenarios = [
+            {
+                question: "You're facing a budget crisis. What will you do?",
+                options: ["Raise Taxes", "Cut Spending", "Borrow Money", "Ignore Problem"],
+                correctAnswer: "Cut Spending"
+            },
+            {
+                question: "A natural disaster has struck your country. How do you respond?",
+                options: ["Declare Emergency", "Seek International Aid", "Raise Funds", "Blame Opposition"],
+                correctAnswer: "Declare Emergency"
+            },
+            {
+                question: "Unemployment is rising. What's your strategy?",
+                options: ["Job Creation Program", "Lower Interest Rates", "Increase Welfare", "Encourage Emigration"],
+                correctAnswer: "Job Creation Program"
+            },
+            {
+                question: "A corruption scandal erupts in your party. How do you handle it?",
+                options: ["Internal Investigation", "Public Apology", "Deny Allegations", "Blame Media"],
+                correctAnswer: "Internal Investigation"
+            },
+            {
+                question: "Foreign relations are tense. What's your diplomatic move?",
+                options: ["Economic Sanctions", "Peace Talks", "Military Posturing", "Form New Alliances"],
+                correctAnswer: "Peace Talks"
+            }
+        ];
+
+        let currentRound = 0;
+        let score = 0;
+        let selectedCard = null;
+
+        function updateScenario() {
+            const scenario = scenarios[currentRound];
+            document.getElementById('scenario').textContent = scenario.question;
+            const cardsContainer = document.getElementById('cards');
+            cardsContainer.innerHTML = '';
+            scenario.options.forEach(option => {
+                const card = document.createElement('div');
+                card.className = 'card bg-blue-100 border-2 border-blue-300 rounded-lg p-4 flex justify-center items-center cursor-pointer hover:bg-blue-200 transition-colors duration-200 text-center';
+                card.textContent = option;
+                card.addEventListener('click', () => selectCard(card, option));
+                cardsContainer.appendChild(card);
+            });
+            document.getElementById('message').textContent = '';
+        }
+
+        function selectCard(card, option) {
+            if (selectedCard) {
+                selectedCard.classList.remove('bg-blue-300', 'border-blue-500');
+                selectedCard.classList.add('bg-blue-100', 'border-blue-300');
+            }
+            selectedCard = card;
+            selectedCard.classList.remove('bg-blue-100', 'border-blue-300');
+            selectedCard.classList.add('bg-blue-300', 'border-blue-500');
+        }
+
+        function submitDecision() {
+            if (!selectedCard) {
+                showMessage('Please select a card before submitting!', 'text-red-500');
+                return;
+            }
+
+            const correctAnswer = scenarios[currentRound].correctAnswer;
+            if (selectedCard.textContent === correctAnswer) {
+                score += 20;
+                showMessage('Correct! You gained 20 points.', 'text-green-500');
+            } else {
+                showMessage(`Incorrect. The right answer was: ${correctAnswer}`, 'text-red-500');
+            }
+
+            currentRound++;
+            document.getElementById('score-value').textContent = score;
+            document.getElementById('round-value').textContent = `${currentRound + 1}/5`;
+
+            setTimeout(() => {
+                if (currentRound < scenarios.length) {
+                    updateScenario();
+                    selectedCard = null;
+                } else {
+                    endGame();
+                }
+            }, 2000);
+        }
+
+        function showMessage(text, colorClass) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.className = `text-center text-lg font-semibold h-8 mb-4 ${colorClass}`;
+        }
+
+        function endGame() {
+            document.getElementById('game-area').innerHTML = `
+                <h2 class="text-2xl font-bold text-center mb-4">Game Over!</h2>
+                <p class="text-xl text-center">Your final score: ${score}</p>
+                <button onclick="restartGame()" class="mt-6 w-full py-3 text-lg bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 font-bold">Play Again</button>
+            `;
+        }
+
+        function restartGame() {
+            currentRound = 0;
+            score = 0;
+            document.getElementById('score-value').textContent = score;
+            document.getElementById('round-value').textContent = '1/5';
+            updateScenario();
+        }
+
+        document.getElementById('submit').addEventListener('click', submitDecision);
+        updateScenario();
+    </script>
+</body>
+</html>

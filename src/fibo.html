@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibonacci in WebAssembly</title>
+</head>
+<body>
+    <h1>Fibonacci using WebAssembly</h1>
+    <p>Result of Fibonacci(10): <span id="result"></span></p>
+    <pre id="wasmHex"></pre>
+
+    <script>
+        const watSource = `(module
+          ;; Declare a function that calculates Fibonacci
+          (func $fibonacci (param $n i32) (result i32)
+            (if (result i32)
+              ;; Check if n <= 1, return n
+              (i32.le_s (get_local $n) (i32.const 1))
+              (then
+                (get_local $n)
+              )
+              ;; Else return fib(n - 1) + fib(n - 2)
+              (else
+                (i32.add
+                  (call $fibonacci (i32.sub (get_local $n) (i32.const 1)))
+                  (call $fibonacci (i32.sub (get_local $n) (i32.const 2)))
+                )
+              )
+            )
+          )
+
+          ;; Export the function as "fib"
+          (export "fib" (func $fibonacci))
+        )`;
+
+        async function compileWATtoWASM(wat) {
+            const wabtModule = await import('https://unpkg.com/wabt@1.0.25/index.js');
+            const wabt = wabtModule.default();
+            const wasmModule = wabt.parseWat('fibonacci.wat', wat);
+            const { buffer } = wasmModule.toBinary({ log: true });
+            return new Uint8Array(buffer);
+        }
+
+        compileWATtoWASM(watSource).then(wasmCode => {
+            // Log the hex representation of the compiled WebAssembly
+            const hexString = Array.from(wasmCode).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            document.getElementById('wasmHex').textContent = hexString;
+
+            // Instantiate the WebAssembly module
+            const wasmModule = new WebAssembly.Module(wasmCode);
+            const wasmInstance = new WebAssembly.Instance(wasmModule);
+
+            const fib = wasmInstance.exports.fib;
+            document.getElementById('result').textContent = fib(10); // Should output 55
+        }).catch(console.error);
+    </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Joker</title>
+  <style>html {font-size: 2vw;}</style>
+</head>
+<body class="bg-black text-zinc-400 min-h-screen min-w-screen">
+  <template id="slot">
+    <section class="
+      w-[11rem] rounded-2xl aspect-[4/6] md:border-2 border lg:border-4 
+      p-4 border-zinc-700 border-dashed relative
+      hover:border-sky-600 hover:border-4
+      transition-all duration-500
+    ">
+      <span id="name" class="select-none">Deck</span>
+    </section>
+  </template>
+  <template id="card">
+    <section class="
+      w-[11rem] rounded-2xl aspect-[4/6] lg 
+      p-4 bg-neutral-800 absolute top-0 left-0
+      transition-all duration-500
+      hover:-translate-x-[1rem]  hover:-translate-y-[1rem]
+    ">
+      <span id="name" class="select-none">Card</span>
+    </section>
+  </template>
+  <template id="empty">
+    <section></section>
+  </template>
+  <main id="desk" class="relative">
+    <section id="table" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="incoming" class="grid gap-4 grid-cols-4 p-4"></section>
+    <section id="player" class="grid gap-4 grid-cols-4 p-4"></section>
+  </main>
+</body>
+<script>
+
+/** @type {(templateId:string, parent:string, id?:string) => HTMLElement} */
+const fragment = (templateId, parent, id) => {
+  const frag = document.querySelector(templateId).content.cloneNode(true);
+  /** @type HTMLElement */
+  const result = frag.querySelector('section');
+  if(id) {result.id = id;}
+  document.querySelector(parent).appendChild(frag);
+  return result;
+};
+
+/** @type {(
+ * templateId:string, 
+ * parent:string, 
+ * id:string, 
+ * name:string, 
+ * topRem:number, 
+ * leftRem:number
+ * ) => [HTMLElement, string] } */
+const slot = (parent, id, name, topRem, leftRem) => {
+  const slot = fragment('#slot', parent, id);
+  slot.querySelector('#name').innerText = name;
+  const moveCardTo = `top: ${topRem}rem; left: ${leftRem}rem;`;
+  return [slot, moveCardTo];
+};
+
+fragment('#empty', '#table');
+const [slotDeck, moveToDeck] = slot('#table', 'slot-deck', 'Deck', 1, 13);
+const [slotDrop, moveToDrop] = slot('#table', 'slot-drop', 'Drop', 1, 13 + 12);
+
+const [slotLine1, moveToLine1] = slot('#incoming', 'slot-line-1','Line 1', 19, 1);
+const [slotLine2, moveToLine2] = slot('#incoming', 'slot-line-1','Line 2', 19, 13);
+const [slotLine3, moveToLine3] = slot('#incoming', 'slot-line-1','Line 3', 19, 13 + 12);
+const [slotLine4, moveToLine4] = slot('#incoming', 'slot-line-1','Line 4', 19, 13 + 24);
+
+const [slotHero, moveToHero] = slot('#player', 'slot-hero','Hero', 19 + 19, 1);
+const [slotAction1, moveToAction1] = slot('#player', 'slot-Action1','Action1', 19 + 19, 13);
+const [slotAction2, moveToAction2] = slot('#player', 'slot-Action1','Action1', 19 + 19, 13 + 12);
+const [slotStore1, moveToStore1] = slot('#player', 'slot-Store1','Store1', 19 + 19, 13 + 24);
+
+const demo = fragment('#card', "#desk", "card-001");
+demo.style = moveToDeck;
+
+slotDeck.onclick = () => demo.style = moveToDeck;
+slotDrop.onclick = () => demo.style = moveToDrop;
+slotLine1.onclick = () => demo.style = moveToLine1;
+slotLine2.onclick = () => demo.style = moveToLine2;
+slotLine3.onclick = () => demo.style = moveToLine3;
+slotLine4.onclick = () => demo.style = moveToLine4;
+slotHero.onclick = () => demo.style = moveToHero;
+slotAction1.onclick = () => demo.style = moveToAction1;
+slotAction2.onclick = () => demo.style = moveToAction2;
+slotStore1.onclick = () => demo.style = moveToStore1;
+</script>
+</html>

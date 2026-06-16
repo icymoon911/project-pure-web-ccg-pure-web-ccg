@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIM-Like Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen">
+    <div class="w-5/6 lg:w-1/2">
+        <h1 class="text-2xl font-bold mb-4 text-center">VIM-Like Editor</h1>
+        <div id="mode-indicator" class="text-center mb-2 text-lg">-- NORMAL MODE --</div>
+        <textarea id="editor" class="rounded-md bg-gray-800 text-gray-200 font-mono p-4 h-80 w-full border border-gray-700 outline-none resize-none" spellcheck="false">
+            <!-- Initial content for the editor -->
+Welcome to the VIM-like Editor. Press 'i' to start inserting text, 'Esc' to stop.
+        </textarea>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editor = document.getElementById('editor');
+            const modeIndicator = document.getElementById('mode-indicator');
+            let isInsertMode = false;
+
+            editor.addEventListener('keydown', function(e) {
+                if (!isInsertMode && e.key === 'i') {
+                    // Enter insert mode
+                    isInsertMode = true;
+                    editor.classList.add('border-green-500');
+                    modeIndicator.textContent = '-- INSERT MODE --';
+                } else if (isInsertMode && e.key === 'Escape') {
+                    // Exit insert mode
+                    isInsertMode = false;
+                    editor.classList.remove('border-green-500');
+                    modeIndicator.textContent = '-- NORMAL MODE --';
+                    e.preventDefault();
+                }
+
+                // Implement VIM motions and commands
+                if (!isInsertMode) {
+                    switch (e.key) {
+                        case 'h':
+                            moveCursor(-1);
+                            e.preventDefault();
+                            break;
+                        case 'l':
+                            moveCursor(1);
+                            e.preventDefault();
+                            break;
+                        case 'k':
+                            moveVertical(-1);
+                            e.preventDefault();
+                            break;
+                        case 'j':
+                            moveVertical(1);
+                            e.preventDefault();
+                            break;
+                        case 'w':
+                            moveWord(1);
+                            e.preventDefault();
+                            break;
+                        case 'b':
+                            moveWord(-1);
+                            e.preventDefault();
+                            break;
+                        case '0':
+                            moveToLineStart();
+                            e.preventDefault();
+                            break;
+                        case '$':
+                            moveToLineEnd();
+                            e.preventDefault();
+                            break;
+                        case 'd':
+                            if (e.key === 'd') {
+                                deleteLine();
+                                e.preventDefault();
+                            }
+                            break;
+                    }
+                }
+
+                // Prevent typing unless in insert mode
+                if (!isInsertMode && e.key.length === 1) {
+                    e.preventDefault();
+                }
+            });
+
+            function moveCursor(offset) {
+                const start = editor.selectionStart;
+                editor.setSelectionRange(start + offset, start + offset);
+            }
+
+            function moveVertical(offset) {
+                const lines = editor.value.split('\n');
+                const currentPos = editor.selectionStart;
+                let currentLine = 0;
+                let charCount = 0;
+
+                // Find the current line based on selectionStart
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= currentPos) {
+                        currentLine = i;
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+
+                const targetLine = currentLine + offset;
+                if (targetLine >= 0 && targetLine < lines.length) {
+                    const targetPos = Math.min(
+                        charCount + lines[targetLine].length,
+                        charCount + lines[targetLine - offset].length + (currentPos - charCount)
+                    );
+                    editor.setSelectionRange(targetPos, targetPos);
+                }
+            }
+
+            function moveWord(direction) {
+                const text = editor.value;
+                let pos = editor.selectionStart;
+
+                if (direction > 0) {
+                    // Move forward to the start of the next word
+                    while (pos < text.length && !isWordCharacter(text[pos])) {
+                        pos++;
+                    }
+                    while (pos < text.length && isWordCharacter(text[pos])) {
+                        pos++;
+                    }
+                } else {
+                    // Move backward to the start of the previous word
+                    pos--;
+                    while (pos > 0 && !isWordCharacter(text[pos])) {
+                        pos--;
+                    }
+                    while (pos > 0 && isWordCharacter(text[pos - 1])) {
+                        pos--;
+                    }
+                }
+
+                editor.setSelectionRange(pos, pos);
+            }
+
+            function moveToLineStart() {
+                const lines = editor.value.split('\n');
+                const currentPos = editor.selectionStart;
+                let charCount = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= currentPos) {
+                        editor.setSelectionRange(charCount, charCount);
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+            }
+
+            function moveToLineEnd() {
+                const lines = editor.value.split('\n');
+                const currentPos = editor.selectionStart;
+                let charCount = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    charCount += lines[i].length;
+                    if (charCount >= currentPos) {
+                        editor.setSelectionRange(charCount, charCount);
+                        break;
+                    }
+                    charCount += 1;
+                }
+            }
+
+            function deleteLine() {
+                const lines = editor.value.split('\n');
+                const currentPos = editor.selectionStart;
+                let currentLine = 0;
+                let charCount = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= currentPos) {
+                        currentLine = i;
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+
+                lines.splice(currentLine, 1);
+                editor.value = lines.join('\n');
+                editor.setSelectionRange(charCount, charCount);
+            }
+
+            function isWordCharacter(char) {
+                return /[a-zA-Z0-9_]/.test(char);
+            }
+
+            // Focus the editor on page load
+            editor.focus();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport"
+content="width=device-width, initial-scale=1.0"><title>Ugly code</title><script
+src="https://cdn.tailwindcss.com"></script></head><body class="bg-black 
+text-emerald-400 min-h-screen "><main class="p-4">> rm -rf node_modules</main>
+<pre class="m-4"></pre><button onclick="stop()" class="bg-emerald-950 px-4
+py-1">stop</button></body><script>const si=(mo)=>(st)=>new Proxy(Array.isArray(
+st)?[]:{},{get:(b,t)=>b[t],set:((b,t,v)=>{b[t]=v;mo(b,t,v)})});const q=p=>
+document.querySelector(p);const mm=v=>q('pre').innerText=JSON.stringify(v,null,2
+);const z=si(mm)([]);z[0]='UGLY framework';const bum=setInterval(_=>z[1]=(Math.
+random()*65536|0).toString(16).toUpperCase(),90);const stop=_=>{clearInterval(
+bum);z[2]='you was stopped me!'}</script></html>

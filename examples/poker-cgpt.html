@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pure Web Poker Game</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/3.0.23/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #355;
+            overflow: hidden;
+            padding: 10px;
+            width: 1200px;
+            height: 768px;
+        }
+        .card, .card-slot {
+            width: 60px;
+            height: 90px;
+            margin: 5px;
+            border-radius: 5px;
+            padding-top: 10px;
+            font-size: 24px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            font-weight: 500;
+            display: inline-block;
+            position: relative;
+        }
+        .card {
+            background: #EDC;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+            border: 3px solid #DCB;
+        }
+        .card-slot {
+            border: 2px dashed #DCB;
+        }
+        .card::after {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            font-size: 18px;
+        }
+        .card.spades::after, .card.clubs::after {
+            content: '\2660'; /* Spade symbol */
+            color: black;
+        }
+        .card.hearts::after, .card.diamonds::after {
+            content: '\2665'; /* Heart symbol */
+            color: red;
+        }
+        #desk {
+            perspective: 1200px;
+        }
+        #desk .relative {
+            transform-style: preserve-3d;
+            transform: rotateX(60deg) translateX(0) translateY(-100px) rotateZ(0deg) scale(1);
+        }
+        .player, #dealer {
+            position: absolute;
+        }
+        #dealer {
+            top: 220px;
+            left: 50%;
+            transform: translateX(-50%) rotateX(15deg);
+        }
+        .player:nth-child(1) {
+            top: 80px;
+            left: 120px;
+            transform: rotateZ(-30deg);
+        }
+        .player:nth-child(2) {
+            top: 40px;
+            left: 500px;
+            transform: rotateZ(0deg);
+        }
+        .player:nth-child(3) {
+            top: 80px;
+            left: 880px;
+            transform: rotateZ(30deg);
+        }
+        .player:nth-child(4) {
+            top: 450px;
+            left: 180px;
+            transform: rotateZ(30deg);
+        }
+        .player:nth-child(6) {
+            top: 450px;
+            left: 800px;
+            transform: rotateZ(-30deg);
+        }
+        .player:nth-child(5) {
+            top: 500px;
+            left: 500px;
+            transform: rotateZ(0deg);
+        }
+        .chips, .bet, h2 {
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        .chips, .bet {
+            font-size: 16px;
+        }
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 20px;
+            z-index: 1000;
+        }
+        .modal p {
+            margin-bottom: 10px;
+        }
+        .highlight {
+            border: 4px solid #CDDC39;
+            border-radius: 7px;
+        }
+    </style>
+</head>
+<body class="bg-green-700 min-h-screen flex flex-col items-center justify-center text-white">
+    <div id="app" class="w-full max-w-4xl p-4 bg-gray-800 rounded-lg shadow-md">
+        <h1 class="text-center text-2xl font-bold mb-4">Texas Hold'em Poker Game</h1>
+        <div class="mb-4">
+            <div class="flex justify-between">
+                <span>Community Cards:</span>
+                <button id="dealButton" class="px-4 py-2 bg-blue-500 rounded hover:bg-blue-700">Deal Cards</button>
+            </div>
+            <div id="communityCards" class="flex gap-2 mt-2 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+        <div id="desk" class="relative mb-8">
+            <div id="dealer" class="absolute text-center">
+                <p class="text-lg text-coral-500">Dealer</p>
+                <div class="flex justify-center items-center gap-2 mt-2">
+                    <div class="hand"></div>
+                    <div class="bet"></div>
+                </div>
+            </div>
+            <div id="playersContainer"></div>
+        </div>
+        <button id="checkWinnerButton" class="px-4 py-2 bg-red-500 rounded hover:bg-red-700">Check Winner</button>
+        
+        <template id="playerTemplate">
+            <div class="player absolute">
+                <h2 class="text-lg font-bold text-center">Player</h2>
+                <div class="flex gap-2 mt-2 player-hand"></div>
+                <div class="chips"></div>
+                <div class="bet"></div>
+            </div>
+        </template>
+    </div>
+    <div id="winnerModal" class="modal hidden">
+        <p id="winnerMessage"></p>
+        <button id="closeModalButton" class="px-4 py-2 bg-blue-500 rounded hover:bg-blue-700">Close</button>
+    </div>
+    
+    <script>
+        /**
+         * @typedef {Object} GameState
+         * @property {Array<string>} communityCards - The cards in the community.
+         * @property {Array<Array<string>>} playerHands - The cards in each player's hand.
+         */
+
+        /** @type {GameState} */
+        const state = {
+            communityCards: [],
+            playerHands: Array(6).fill([])
+        };
+
+        /** @type {ProxyHandler<GameState>} */
+        const handler = {
+            set(target, key, value) {
+                target[key] = value;
+                render();
+                return true;
+            }
+        };
+
+        const proxyState = new Proxy(state, handler);
+
+        const dealButton = document.getElementById('dealButton');
+        const checkWinnerButton = document.getElementById('checkWinnerButton');
+        const communityCards = document.getElementById('communityCards');
+        const playersContainer = document.getElementById('playersContainer');
+        const playerTemplate = document.getElementById('playerTemplate');
+        const winnerModal = document.getElementById('winnerModal');
+        const winnerMessage = document.getElementById('winnerMessage');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+        const playerNames = ['Jack', 'Foo', 'Wheeler', 'Amigo', 'Lucy', 'Pedro'];
+
+        // Create player elements from the template
+        function createPlayers() {
+            const playerPositions = [
+                { top: '80px', left: '120px', rotation: '-30deg' },
+                { top: '40px', left: '500px', rotation: '0deg' },
+                { top: '80px', left: '880px', rotation: '30deg' },
+                { top: '450px', left: '180px', rotation: '30deg' },
+                { top: '500px', left: '500px', rotation: '0deg' },
+                { top: '450px', left: '800px', rotation: '-30deg' },
+            ];
+
+            for (let i = 0; i < 6; i++) {
+                const playerClone = playerTemplate.content.cloneNode(true);
+                playerClone.querySelector('h2').textContent = playerNames[i];
+                playerClone.querySelector('.player-hand').id = `playerHand-${i}`;
+                const playerElement = playerClone.querySelector('.player');
+                const position = playerPositions[i];
+                playerElement.style.top = position.top;
+                playerElement.style.left = position.left;
+                playerElement.style.transform = `rotateZ(${position.rotation})`;
+                playersContainer.appendChild(playerClone);
+            }
+        }
+
+        createPlayers();
+
+        const playerHands = Array.from({ length: 6 }, (_, i) => document.getElementById(`playerHand-${i}`));
+
+        /**
+         * Function to deal cards for the players and community.
+         */
+        function dealCards() {
+            const suits = ['spades', 'clubs', 'hearts', 'diamonds'];
+            const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            
+            // Deal community cards
+            const newCommunityCards = [];
+            for (let i = 0; i < 5; i++) {
+                const suit = suits[Math.floor(Math.random() * suits.length)];
+                const value = values[Math.floor(Math.random() * values.length)];
+                newCommunityCards.push({ value, suit });
+            }
+            proxyState.communityCards = newCommunityCards;
+
+            // Deal cards to each player
+            const newPlayerHands = Array(6).fill(null).map(() => {
+                const hand = [];
+                for (let i = 0; i < 2; i++) {
+                    const suit = suits[Math.floor(Math.random() * suits.length)];
+                    const value = values[Math.floor(Math.random() * values.length)];
+                    hand.push({ value, suit });
+                }
+                return hand;
+            });
+            proxyState.playerHands = newPlayerHands;
+        }
+
+        /**
+         * Function to render the community and players' hands.
+         */
+        function render() {
+            // Render community cards
+            communityCards.innerHTML = '';
+            if (proxyState.communityCards.length === 0) {
+                for (let i = 0; i < 5; i++) {
+                    const slotEl = document.createElement('div');
+                    slotEl.className = 'card-slot';
+                    communityCards.appendChild(slotEl);
+                }
+            } else {
+                proxyState.communityCards.forEach(card => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = `card ${card.suit}`;
+                    cardEl.textContent = card.value;
+                    communityCards.appendChild(cardEl);
+                });
+            }
+
+            // Render each player's hand
+            proxyState.playerHands.forEach((hand, index) => {
+                const playerHandEl = playerHands[index];
+                playerHandEl.innerHTML = '';
+                if (hand.length === 0) {
+                    for (let i = 0; i < 2; i++) {
+                        const slotEl = document.createElement('div');
+                        slotEl.className = 'card-slot';
+                        playerHandEl.appendChild(slotEl);
+                    }
+                } else {
+                    hand.forEach(card => {
+                        const cardEl = document.createElement('div');
+                        cardEl.className = `card ${card.suit}`;
+                        cardEl.textContent = card.value;
+                        playerHandEl.appendChild(cardEl);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Function to determine the winner.
+         */
+        function checkWinner() {
+            // For simplicity, we'll assume the player with the highest card wins.
+            const cardValues = {
+                '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+                'J': 11, 'Q': 12, 'K': 13, 'A': 14
+            };
+            
+            let highestValue = 0;
+            let winnerIndex = -1;
+
+            proxyState.playerHands.forEach((hand, index) => {
+                hand.forEach(card => {
+                    const value = cardValues[card.value];
+                    if (value > highestValue) {
+                        highestValue = value;
+                        winnerIndex = index;
+                    }
+                });
+            });
+
+            if (winnerIndex !== -1) {
+                // Highlight the winner
+                document.querySelectorAll('.player').forEach((player, index) => {
+                    player.classList.remove('highlight');
+                    if (index === winnerIndex) {
+                        player.classList.add('highlight');
+                    }
+                });
+
+                // Show winner modal
+                winnerMessage.textContent = `${playerNames[winnerIndex]} wins with the highest card value of ${highestValue}!`;
+                winnerModal.classList.remove('hidden');
+            }
+        }
+
+        closeModalButton.addEventListener('click', () => {
+            winnerModal.classList.add('hidden');
+        });
+
+        dealButton.addEventListener('click', dealCards);
+        checkWinnerButton.addEventListener('click', checkWinner);
+    </script>
+</body>
+</html>
