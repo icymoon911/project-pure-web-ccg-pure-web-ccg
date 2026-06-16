@@ -45,11 +45,16 @@ const slot = (parent, id, name, topRem, leftRem) => {
     if (alien.fly?.id) {
       const found = alien.fly.moves
         .find(([, from, to]) => from.id == alien.fly.id && to.id == id)
-      // console.log(found);
       if (found) {
+        const [handler, from, to] = found;
         const {card} = alien.table[alien.fly.id];
         alien.table[alien.fly.id].card = null;
         alien.table[id] = {id, card};
+        // Execute the action handler
+        try { await handler(from, to); }
+        catch(e) { console.error('Handler error:', e); }
+        // Advance round if frontline is now clear
+        await advanceRoundIfNeeded();
       }
       alien.fly = null;
       alien._over_ = [];
@@ -67,7 +72,7 @@ const slot = (parent, id, name, topRem, leftRem) => {
       alien._over_ = mm;
       // TODO rework :: tableOfSlots are the wierd connection between a reactive state and dom element
       // @ts-ignore
-      mm.map(([,,target]) => tableOfSlots[target.id].slot.dataset.possible = 1);
+      mm.map(([fn, from, to]) => tableOfSlots[to.id].slot.dataset.possible = 1);
     } catch (error) {
       alien._over_ = error
     }
@@ -102,6 +107,22 @@ const tableOfSlots = {
   L1,L2,L3,L4,
   HE,A1,A2,S1,
 };
+
+// ─── HUD: Score & Phase display ────────────────────────────────────────────
+const hud = document.createElement('div');
+hud.id = 'game-hud';
+hud.style.cssText = `
+  position:fixed; bottom:1rem; left:50%; transform:translateX(-50%);
+  z-index:20000; pointer-events:none; text-align:center;
+  padding:1rem 2rem;
+  background:rgba(0,0,0,0.75); border-radius:1rem;
+  backdrop-filter:blur(6px);
+  font-family:monospace; color:#e4e4e7;
+  min-width:20rem;
+`;
+document.body.appendChild(hud);
+setInterval(() => { if (typeof updateHUD === 'function') updateHUD(); }, 1200);
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** @type {<T extends Array>(arr:T) => T} */
 export const pick = arr => arr[Math.random() * arr.length | 0];
