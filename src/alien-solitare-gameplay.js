@@ -53,8 +53,12 @@ const zipcard = ({ name, power, maxPower, type, side, work }) => [power, maxPowe
 
 const createDeck = () => {
   const [hero,...zipCard] = cardCollection.map(zipcard);
-  const shuffled = zipCard.sort(() => Math.random() - 0.5);
-  alien.deck = [hero, ...shuffled];
+  // Fisher-Yates shuffle for unbiased random distribution
+  for (let i = zipCard.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [zipCard[i], zipCard[j]] = [zipCard[j], zipCard[i]];
+  }
+  alien.deck = [hero, ...zipCard];
   // alien.deck.map(frg => frg.style.translate =  )
 }
 const emptyTable = () => [...forntline, ...heroLine, "DR", "DK"].map(
@@ -101,7 +105,11 @@ const gameAnimation = (prop, _, next) => {
   try {
     if (next?.card) {
       const [,, cardNameId] = next.card.split('|')
-      ts[prop].moveCardTo(render[cardNameId].card)
+      const slotRef = globalThis.ts?.[prop];
+      const renderRef = globalThis.render?.[cardNameId];
+      if (slotRef?.moveCardTo && renderRef?.card) {
+        slotRef.moveCardTo(renderRef.card);
+      }
     }
   } catch (error) {
     console.log(error)
@@ -120,7 +128,8 @@ const goingForward = async () => {
   hero();
   await delay(600);
   alien.phases = "STORY_GOES_ON"
-  dealCards();
+  await dealCards();
+  checkPhase();
 };
 globalThis.goingForward = goingForward;
 gameRule()
@@ -204,13 +213,97 @@ const playCardInteraction = () => { };
 const renderAnimation = () => { };
 const informPlayer = () => { };
 
-const engageCaptain = (p) => p;
-const engageGuard = (p) => p;
+/** @type {(from:Slot, to:Slot) => void} */
+const engageCaptain = (from, to) => {
+  const eCard = alien.table[from.id]?.card;
+  const gCard = alien.table[to.id]?.card;
+  if (!eCard || !gCard) return;
+  const { eResult, gResult, eHealth, gHealth } = conflict(eCard, gCard);
+  alien.table[from.id].card = eHealth > 0 ? eResult : null;
+  alien.table[to.id].card = gHealth > 0 ? gResult : null;
+};
+
+/** @type {(from:Slot, to:Slot) => void} */
+const engageGuard = (from, to) => {
+  const eCard = alien.table[from.id]?.card;
+  const gCard = alien.table[to.id]?.card;
+  if (!eCard || !gCard) return;
+  const { eResult, gResult, eHealth, gHealth } = conflict(eCard, gCard);
+  alien.table[from.id].card = eHealth > 0 ? eResult : null;
+  alien.table[to.id].card = gHealth > 0 ? gResult : null;
+};
+
+/** @type {(from:Slot, to:Slot) => void} */
+const engageStrange = (from, to) => {
+  const eCard = alien.table[from.id]?.card;
+  const gCard = alien.table[to.id]?.card;
+  if (!eCard || !gCard) return;
+  const { eResult, gResult, eHealth, gHealth } = conflict(eCard, gCard);
+  alien.table[from.id].card = eHealth > 0 ? eResult : null;
+  alien.table[to.id].card = gHealth > 0 ? gResult : null;
+};
+
 const engageEmptyActive = (p) => p;
-const engageStrange = (p) => p;
-const fixCaptain = (p) => p;
-const useSkill = (p) => p;
-const gainScore = (p) => p;
-const storeSomething = (p) => p;
-const dropSomething = (p) => p;
-const prepare = (p) => p;
+
+/** @type {(from:Slot, to:Slot) => void} */
+const simpleMove = (from, to) => {
+  alien.table[to.id] = { id: to.id, card: alien.table[from.id].card };
+  alien.table[from.id].card = null;
+};
+
+const fixCaptain = simpleMove;
+const useSkill = simpleMove;
+const prepare = simpleMove;
+const storeSomething = simpleMove;
+
+/** @type {(from:Slot, to:Slot) => void} */
+const gainScore = (from, to) => {
+  const power = getPower(alien.table[from.id]?.card || '0');
+  alien.score = (alien.score || 0) + power;
+  simpleMove(from, to);
+};
+
+/** @type {(from:Slot, to:Slot) => void} */
+const dropSomething = (from, to) => {
+  const card = alien.table[from.id]?.card;
+  if (card) alien.lost = [...(alien.lost || []), card];
+  alien.table[from.id].card = null;
+};
+
+/** Action handler registry */
+const handlers = {
+  engageCaptain,
+  engageGuard,
+  engageStrange,
+  fixCaptain,
+  useSkill,
+  gainScore,
+  storeSomething,
+  dropSomething,
+  prepare,
+};
+globalThis.handlers = handlers;
+
+/** Check and update the game phase based on current table state */
+const checkPhase = () => {
+  const heroCard = alien.table.HE?.card;
+  const heroPower = heroCard ? getPower(heroCard) : 0;
+
+  if (heroPower <= 0) {
+    alien.phases = 'BURN_OUT';
+    return;
+  }
+
+  const frontSlots = forntline.map(id => alien.table[id]);
+  const hasStrangeOnFront = frontSlots.some(s => s?.card && s.card.includes('STRANGE'));
+  const deckEmpty = alien.deck.length === 0;
+
+  if (!hasStrangeOnFront && deckEmpty) {
+    alien.phases = 'SURVIVE';
+  } else if (deckEmpty && hasStrangeOnFront) {
+    alien.phases = 'SOLITARE';
+  } else {
+    alien.phases = 'STORY_GOES_ON';
+  }
+};
+globalThis.checkPhase = checkPhase;

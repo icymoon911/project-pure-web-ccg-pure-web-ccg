@@ -530,7 +530,7 @@ export const cardCollection = [
    "side": "NEUTRAL",
  },
  {
-   "id": "c048",
+   "id": "c051",
    "name": "Proton Palace",
    "power": 6,
    "maxPower": 6,

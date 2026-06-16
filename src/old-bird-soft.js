@@ -11,7 +11,7 @@ export const monitor = state => {
   try {
     monitorView.innerText = JSON.stringify(state, null, 2);
   } catch (error) {
-    console.error(console.error());
+    console.error(error);
     monitorView.innerText = error;
   }
 };

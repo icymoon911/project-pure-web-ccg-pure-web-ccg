@@ -7,6 +7,12 @@ import "./alien-solitare-gameplay.js"; // easy to solve multi script problem
 
 /** @typedef {import('./alien.js').State} State */
 
+/** @type {import('./alien.js').State | null} */
+const alien = globalThis.alien ?? null;
+if (!alien) {
+  console.warn('[pure-ccg-view] alien state not found on globalThis — check alien-solitare-gameplay.js initialization');
+}
+
 /**
  * @type {(
  *   parent:string,
@@ -42,14 +48,22 @@ const slot = (parent, id, name, topRem, leftRem) => {
     card.style.left = `${leftRem}rem`;
   }
   slot.onclick = async () => {
+    if (!alien) return;
     if (alien.fly?.id) {
       const found = alien.fly.moves
         .find(([, from, to]) => from.id == alien.fly.id && to.id == id)
       // console.log(found);
       if (found) {
-        const {card} = alien.table[alien.fly.id];
-        alien.table[alien.fly.id].card = null;
-        alien.table[id] = {id, card};
+        const handlerName = found[0];
+        const handlerFn = globalThis.handlers?.[handlerName];
+        if (typeof handlerFn === 'function') {
+          handlerFn(found[1], found[2]);
+        } else {
+          const {card} = alien.table[alien.fly.id];
+          alien.table[alien.fly.id].card = null;
+          alien.table[id] = {id, card};
+        }
+        globalThis.checkPhase?.();
       }
       alien.fly = null;
       alien._over_ = [];
@@ -60,9 +74,10 @@ const slot = (parent, id, name, topRem, leftRem) => {
     }
   }
   slot.onmouseover = async () => {
+    if (!alien) return;
     try {
       // console.log(id);
-      const mm = moveMap(alien.table[id]);
+      const mm = globalThis.moveMap?.(alien.table[id]) ?? [];
       // console.log(mm);
       alien._over_ = mm;
       // TODO rework :: tableOfSlots are the wierd connection between a reactive state and dom element
@@ -74,6 +89,7 @@ const slot = (parent, id, name, topRem, leftRem) => {
   }
 
   slot.onmouseleave = async () => {
+    if (!alien) return;
     try {
       Object.values(tableOfSlots).map(({slot}) => slot.removeAttribute('data-possible'));
     } catch (error) {
@@ -262,7 +278,7 @@ const board = (angleZ = 0, angleX = 30, scale = 0) => {
 }
 
 const playWithTable = () => {
-  alien.deck.map((id, idx) => render[id.split('|')[2]].card.style.transform = `
+  alien.deck.map((id, idx) => alien.render[id.split('|')[2]].card.style.transform = `
     translateZ(${(alien.deck.length - idx) / 5 }rem)
     translateX(${(alien.deck.length - idx) / 2 }rem)
     rotateY(${(alien.deck.length - idx) * 2}deg)
@@ -374,6 +390,6 @@ c2.style.transform = 'translateZ(2rem)';
 // ------ [ begin the game setup ]
 
 setTimeout(() => {
-  alien.deck.map((id, idx) => render[id.split('|')[2]].card.style.transform = `translateZ(${(alien.deck.length - idx) / 7 }rem)`)
+  alien.deck.map((id, idx) => alien.render[id.split('|')[2]].card.style.transform = `translateZ(${(alien.deck.length - idx) / 7 }rem)`)
 }, 500);
 setTimeout(() => goingForward(), 1000);
