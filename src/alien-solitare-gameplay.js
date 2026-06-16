@@ -53,9 +53,12 @@ const zipcard = ({ name, power, maxPower, type, side, work }) => [power, maxPowe
 
 const createDeck = () => {
   const [hero,...zipCard] = cardCollection.map(zipcard);
-  const shuffled = zipCard.sort(() => Math.random() - 0.5);
-  alien.deck = [hero, ...shuffled];
-  // alien.deck.map(frg => frg.style.translate =  )
+  // Fisher-Yates shuffle: unbiased, each card has equal probability at each position
+  for (let i = zipCard.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [zipCard[i], zipCard[j]] = [zipCard[j], zipCard[i]];
+  }
+  alien.deck = [hero, ...zipCard];
 }
 const emptyTable = () => [...forntline, ...heroLine, "DR", "DK"].map(
   slotId => alien.table[slotId] = {id:slotId, card: null});
@@ -69,6 +72,7 @@ const dealCards = async () => {
     alien.table[id] = {id,card:alien.deck.shift()}
     await delay(400);
   }
+  checkPhaseTransition();
 }
 
 const thisIsTheEnd = () =>
@@ -99,9 +103,11 @@ const getPower = (card) => + card.split('|')?.[0];
 /** @type {(prop:Slot, _:any, next:Slot) => void} */
 const gameAnimation = (prop, _, next) => {
   try {
-    if (next?.card) {
+    if (next?.card && typeof globalThis.ts !== 'undefined' && typeof globalThis.render !== 'undefined') {
       const [,, cardNameId] = next.card.split('|')
-      ts[prop].moveCardTo(render[cardNameId].card)
+      if (globalThis.ts[prop] && globalThis.render[cardNameId]) {
+        globalThis.ts[prop].moveCardTo(globalThis.render[cardNameId].card)
+      }
     }
   } catch (error) {
     console.log(error)
@@ -120,7 +126,8 @@ const goingForward = async () => {
   hero();
   await delay(600);
   alien.phases = "STORY_GOES_ON"
-  dealCards();
+  await dealCards();
+  checkPhaseTransition();
 };
 globalThis.goingForward = goingForward;
 gameRule()
@@ -204,13 +211,69 @@ const playCardInteraction = () => { };
 const renderAnimation = () => { };
 const informPlayer = () => { };
 
-const engageCaptain = (p) => p;
-const engageGuard = (p) => p;
+/** @type {(from: Slot, to: Slot) => void} */
+const engageCaptain = (from, to) => {
+  const result = conflict(from.card, to.card);
+  from.card = result.eHealth > 0 ? result.eResult : null;
+  to.card = result.gHealth > 0 ? result.gResult : null;
+};
+const engageGuard = (from, to) => {
+  const result = conflict(from.card, to.card);
+  from.card = result.eHealth > 0 ? result.eResult : null;
+  to.card = result.gHealth > 0 ? result.gResult : null;
+};
 const engageEmptyActive = (p) => p;
-const engageStrange = (p) => p;
-const fixCaptain = (p) => p;
+const engageStrange = (from, to) => {
+  const result = conflict(from.card, to.card);
+  from.card = result.eHealth > 0 ? result.eResult : null;
+  to.card = result.gHealth > 0 ? result.gResult : null;
+};
+const fixCaptain = (from, to) => {
+  to.card = from.card;
+  from.card = null;
+};
 const useSkill = (p) => p;
-const gainScore = (p) => p;
-const storeSomething = (p) => p;
-const dropSomething = (p) => p;
-const prepare = (p) => p;
+const gainScore = (from, to) => {
+  alien.score += getPower(from.card);
+  to.card = from.card;
+  from.card = null;
+};
+const storeSomething = (from, to) => {
+  to.card = from.card;
+  from.card = null;
+};
+const dropSomething = (from, to) => {
+  alien.lost.push(from.card);
+  to.card = from.card;
+  from.card = null;
+};
+const prepare = (from, to) => {
+  to.card = from.card;
+  from.card = null;
+};
+
+const checkPhaseTransition = () => {
+  if (alien.phases === 'BURN_OUT' || alien.phases === 'SURVIVE') return;
+  const heroCard = alien.table.HE?.card;
+  if (!heroCard) {
+    alien.phases = 'BURN_OUT';
+    return;
+  }
+  const allFrontEmpty = forntline.every(id => !alien.table[id]?.card);
+  if (allFrontEmpty && alien.deck.length === 0) {
+    alien.phases = 'SURVIVE';
+    return;
+  }
+  if (alien.phases === 'BEGIN' && !allFrontEmpty) {
+    alien.phases = 'STORY_GOES_ON';
+  }
+};
+globalThis.checkPhaseTransition = checkPhaseTransition;
+globalThis.engageCaptain = engageCaptain;
+globalThis.engageGuard = engageGuard;
+globalThis.engageStrange = engageStrange;
+globalThis.fixCaptain = fixCaptain;
+globalThis.gainScore = gainScore;
+globalThis.storeSomething = storeSomething;
+globalThis.dropSomething = dropSomething;
+globalThis.prepare = prepare;

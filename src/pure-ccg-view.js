@@ -7,6 +7,9 @@ import "./alien-solitare-gameplay.js"; // easy to solve multi script problem
 
 /** @typedef {import('./alien.js').State} State */
 
+/** @type {import('./alien.js').State} */
+const alien = globalThis.alien || {};
+
 /**
  * @type {(
  *   parent:string,
@@ -45,11 +48,23 @@ const slot = (parent, id, name, topRem, leftRem) => {
     if (alien.fly?.id) {
       const found = alien.fly.moves
         .find(([, from, to]) => from.id == alien.fly.id && to.id == id)
-      // console.log(found);
       if (found) {
-        const {card} = alien.table[alien.fly.id];
-        alien.table[alien.fly.id].card = null;
-        alien.table[id] = {id, card};
+        const [action, from, to] = found;
+        const actionName = typeof action === 'function' ? action.name : action;
+        const isEngage = /^engage/.test(actionName);
+        if (!isEngage) {
+          const {card} = alien.table[alien.fly.id];
+          alien.table[alien.fly.id].card = null;
+          alien.table[id] = {id, card};
+        }
+        if (typeof action === 'function') {
+          action(from, to);
+        } else if (typeof globalThis[actionName] === 'function') {
+          globalThis[actionName](from, to);
+        }
+        if (typeof globalThis.checkPhaseTransition === 'function') {
+          globalThis.checkPhaseTransition();
+        }
       }
       alien.fly = null;
       alien._over_ = [];
